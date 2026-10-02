@@ -368,7 +368,7 @@ function HUD:Start(c)
 	})
 
 	-- ===== left: Free Gifts + square menu grid =====
-	local left = Kit.New("Frame", { BackgroundTransparency = 1, Size = UDim2.fromOffset(270, 400), Position = UDim2.fromOffset(16, 158), Name = "Left", Parent = root })
+	local left = Kit.New("Frame", { BackgroundTransparency = 1, Size = UDim2.fromOffset(280, 400), Position = UDim2.fromOffset(16, 158), Name = "Left", Parent = root })
 	local gifts = Kit.Button({
 		Name = "Gifts", Text = "Free Gifts", Icon = "Gift", IconSize = 44, TextSize = 23, Color = "Green",
 		Size = UDim2.fromOffset(176, 52), Radius = 12, StrokeThickness = 3.5, Parent = left,
@@ -384,7 +384,7 @@ function HUD:Start(c)
 		Size = UDim2.new(1, 0, 0, 18), Position = UDim2.new(0, 0, 1, 3), Name = "GiftTimer", Parent = gifts,
 	})
 	-- three columns of tiles (nine menus)
-	local grid = Kit.New("Frame", { BackgroundTransparency = 1, Size = UDim2.fromOffset(264, 300), Position = UDim2.fromOffset(0, 80), Name = "Grid", Parent = left })
+	local grid = Kit.New("Frame", { BackgroundTransparency = 1, Size = UDim2.fromOffset(272, 300), Position = UDim2.fromOffset(0, 80), Name = "Grid", Parent = left })
 	Kit.New("UIGridLayout", { CellSize = UDim2.fromOffset(84, 84), CellPadding = UDim2.fromOffset(8, 12), SortOrder = Enum.SortOrder.LayoutOrder, Parent = grid })
 	for i, def in ipairs(GRID_BUTTONS) do
 		local button, badge = tileButton(grid, def, i)

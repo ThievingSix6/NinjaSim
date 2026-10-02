@@ -18,7 +18,7 @@ function Menu.Build(ctx)
 	local DataController = ctx.Controllers.DataController
 
 	local window, content, close = Kit.Window({
-		Name = "Suits", Title = "Ninja Suits", Icon = "Star", Accent = "Gold", Size = UDim2.fromOffset(900, 560), Parent = ctx.Parent,
+		Name = "Suits", Title = "Ninja Suits", Icon = "Star", Accent = "Gold", Size = UDim2.fromOffset(1010, 560), Parent = ctx.Parent,
 	})
 	Kit.Label({
 		Text = "Wear any suit you have reached. The worn suit gains Mastery from kills: +0.5% damage per level, and ultimates at 25, 50, 75 and 100 (Z X C V).",
@@ -41,7 +41,7 @@ function Menu.Build(ctx)
 		local chips = {}
 		for i, def in ipairs(Mastery.ForSuit(tier.Id)) do
 			local chip = Kit.Panel({
-				Size = UDim2.fromOffset(92, 78), Position = UDim2.new(0, 352 + (i - 1) * 98, 0.5, 0), AnchorPoint = Vector2.new(0, 0.5),
+				Size = UDim2.fromOffset(86, 78), Position = UDim2.new(0, 346 + (i - 1) * 92, 0.5, 0), AnchorPoint = Vector2.new(0, 0.5),
 				Paint = def.Paint, StrokeThickness = 2.5, Radius = 10, ZIndex = 2, Parent = row,
 			})
 			local icon = Kit.Icon(chip, def.Icon, { Size = UDim2.fromOffset(34, 34), Position = UDim2.new(0.5, 0, 0, 4), AnchorPoint = Vector2.new(0.5, 0), ZIndex = 4 })
@@ -85,7 +85,7 @@ function Menu.Build(ctx)
 				api.SetColor("Slate")
 				api.SetEnabled(false)
 			else
-				r.Mastery.Text = string.format("Mastery %d   +%d%% damage", level, math.floor(level * Mastery.DamagePerLevel * 100 + 0.5))
+				r.Mastery.Text = string.format("Mastery %d   +%g%% damage", level, level * Mastery.DamagePerLevel * 100)
 				r.SetProgress(if level >= Mastery.Max then 1 else points / Mastery.ToNext(level), if level >= Mastery.Max then "MAX" else points .. " / " .. Mastery.ToNext(level))
 				if worn.Id == tier.Id then
 					api.SetText("Worn")

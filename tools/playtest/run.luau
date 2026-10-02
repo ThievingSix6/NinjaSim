@@ -601,6 +601,15 @@ E.addServerPlayer = function(name, userId)
 	return other
 end
 
+E.removeServerPlayer = function(other)
+	local i = table.find(players, other)
+	if i then
+		table.remove(players, i)
+	end
+	signalFor(PlayersService, "PlayerRemoving"):Fire(other)
+	other.Parent = nil
+end
+
 E.S, E.C, E.player, E.players, E.stores, E.tagged, E.CS, E.Workspace, E.bindToClose = S, C, player, players, stores, tagged, CS, Workspace, bindToClose
 E.sm = function(name) return S["ServerScriptService.Server.Services." .. name] end
 E.cm = function(path) return C["Players.TestNinja.PlayerScripts.Client." .. path] end

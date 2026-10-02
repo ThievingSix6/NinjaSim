@@ -23,19 +23,26 @@ Fight enemies to earn XP and Coins. Level up to unlock ninja ranks from Brown Ni
 
 | Action | Keyboard / mouse | Gamepad / touch |
 |---|---|---|
-| Attack (hold to keep swinging) | Left click or `F` | R2 / on-screen button |
+| Attack (hold to keep swinging; a press during a swing is queued) | Left click or `F` | R2 / on-screen button |
+| Dodge roll (the way you move; standing still hops back) | `Q` or `Left Ctrl` | Circle (PlayStation) / B (Xbox) / Roll button |
 | Skills (4 slots) / Skills menu | `1` `2` `3` `4` / `K` | LB, RB, Y, LT / skill bar on the HUD |
+| Suit ultimates (unlocked by mastery) | `Z` `X` `C` `V` | D-pad up, right, down, left / ultimate bar on the HUD |
 | Shop / Pets / Inventory | `G` / `P` / `I` | HUD buttons |
 | Rebirth / Upgrades / Areas / Trophies | `R` / `U` / `M` / `T` | HUD buttons |
+| Suits / Trade | `N` / `Y` | HUD buttons |
 | Sprint (x1.4 speed) | Hold `Shift` | Click L3 / always on for touch |
 | Double jump (with a flip) | `Space` again in the air | Jump again in the air |
 | Close menu | `Esc` | B |
 | Admin panel (admins only) | `F2` | Admin button (top right) |
-| Hatch an egg / unlock a gate | Walk up and press the prompt (`E`) | prompt |
+| Hatch an egg / unlock a gate / Mutation Machine | Walk up and press the prompt (`E`) | prompt |
 
 ## What's in the game
 
-- **Combat:** a four-hit katana combo (horizontal slice left, rising slice right, spin slice right, jumping downward finisher) animated full-body in code, with katana trails, hit stop, a small lunge into each strike and light aim assist. The spin hits all around; the finisher hits harder, launches enemies and slams the ground. It has damage numbers, crits, hit sparks, enemy recoil, knockback, death effects, a combo meter, kill streaks, screen shake and coin fly-ups. Hit detection is server-authoritative (arc + range, up to 3 targets).
+- **Combat:** a four-hit katana combo (horizontal slice left, rising slice right, spin slice right, jumping downward finisher) animated full-body in code, with katana trails, hit stop, a small lunge into each strike and light aim assist. The spin hits all around; the finisher hits harder, launches enemies and slams the ground. It has damage numbers, crits, hit sparks, enemy recoil, knockback, death effects, a combo meter, kill streaks, screen shake and coin fly-ups. Hit detection is server-authoritative (arc + range).
+  - **Souls-style pacing** (2026-10-02): swings are slower and heavier (`Combo.Pace`, `Balance.BaseAttackInterval` 0.62 s), each one cuts at most 4 enemies, you walk slowly while a swing plays, and a press during a swing is queued. No weapon reaches further round you than the katana: nunchaku, spear and claw spins lost their extra reach, and only one move per weapon hits all around.
+  - **Stamina** (`Balance.Stamina`, `Util/Stamina`): every swing (finishers more) and every dodge spends it; it refills after a short pause. The bar is under your health. The server keeps its own pool and refuses actions it can't cover.
+  - **Dodge roll** (`DodgeController`, `CombatService`): Circle / B, `Q` or `Left Ctrl`. Rolls 17 studs the way you move (a backstep standing still), with i-frames that make enemy and boss hits miss ("DODGED!"). You can roll out of a swing's recovery but not its windup.
+  - Enemies wind their attacks up for 0.62 s (`Balance.EnemyWindup`) so you can read them and roll through.
 - **Skills:** 12 ninja and samurai skills for crowd fights, on 4 hotkey slots with a skill bar (cooldown sweeps) above the XP bar.
   - Shuriken Storm, Whirlwind Slash, Iaido Dash, Wind Step, Smoke Bomb, Kunai Rain, Dragon Flame, Oni Quake, Lightning Blade, Shadow Clone, Bushido Spirit and the Thousand Cuts ultimate: cones, circles, lines, chains, clones, dashes and buffs.
   - Some unlock free by level or ninja tier, the rest are learned with Coins (or Spirit Shards for the ultimate) in the Skills menu (`K`); each levels up to 5.
@@ -63,6 +70,7 @@ Fight enemies to earn XP and Coins. Level up to unlock ninja ranks from Brown Ni
   - `SkillService:CastAt(player, skillId, position, level?)` fires any skill at a point with no slot or cooldown (for procs); skills with `PointCast = true` read best that way.
 - **Progression:** fast early XP curve (Lv 10 in about 3 minutes). 12 ninja tiers unlock with a cinematic, a new outfit and a matching katana. HP scales with level and tier.
 - **8 areas:** Ninja Village, Bamboo Forest, Samurai Village, Demon Valley, Shadow Forest, Volcanic Fortress, Sky Temple and Void Realm.
+  - The **Ninja Village** (2026-10-02) is a full-size valley modelled on Kyoto (`ZoneDecor.Village`, `ZoneLayouts.village`): a great vermilion torii over a spawn plaza ringed with cherry trees, Gion street lined with machiya and strings of paper lanterns, a stone-walled canal with weeping cherries and willows, the Ninenzaka lane climbing past a five-storey pagoda to the Kiyomizu stage on its pillars, the golden pavilion over its pond, a tunnel of torii (Fushimi Inari) up to the boss shrine, a dojo and zen garden by the training dummies, cherry blossoms everywhere and forests of cedar, maple and wild cherry on every hill and ridge. Renders: `assets/previews/world/`.
   - Each area has its own terrain, props, lighting, ambient particles, 3 enemy camps, a boss and an egg.
   - Gates unlock by level plus Coins.
 - **Enemies:** 24 enemy types across 6 procedural rig archetypes, all with walk, attack, hit and death animation. Stats are derived from level.
@@ -74,7 +82,8 @@ Fight enemies to earn XP and Coins. Level up to unlock ninja ranks from Brown Ni
   - Timed boosts that stack to 3 hours.
   - Cosmetics: auras, trails, kill effects and titles.
   - Utility items: sandals, pet slots, storage, triple hatch and auto swing.
-- **Pets:** 42 pets across 7 rarities and 9 eggs. Luck-weighted rolls, hatch animation (x1 or x3), equip best, favourites, multi-delete. Pets follow you and are rendered on the client only.
+- **Pets:** 51 pets across 8 rarities and 9 eggs. Luck-weighted rolls, hatch animation (x1 or x3), equip best, favourites, multi-delete. Pets follow you and are rendered on the client only.
+  - Models (2026-10-02): rounded chibi pets built from ellipsoids, with big shiny eyes, blush and a look per species from each pet's `Look` (fox, panda, tanuki, wolf, stag, salamander, maneki-neko, crane, owl, bat, phoenix, serpent and kirin dragons, koi, slimes, oni masks, cloud pup, spirit flames, ninja and samurai minis...). Wings and tails flap about a hinge. Gallery: `assets/previews/pets/gallery.png` (`pet_previews.py ... --gallery`).
   - **Auto-delete:** click a pet in an egg's menu to stop keeping it (up to Epic, so a misclick can't eat a Legendary).
   - **Mutations** (like Grow a Garden): every hatch rolls one, about 1 in 9 overall. A mutation multiplies all of the pet's stats and changes its look everywhere (hatch reveal, cards, detail panel, the follow pet).
     - Big (1 in 15, x1.5, 1.4x size), Golden (1 in 40, x2), Frozen (1 in 90, x2.5), Shocked (1 in 150, x3), Shadow (1 in 300, x4), Rainbow (1 in 500, x5), Giant (1 in 2,000, x8, 2.2x size), Celestial (1 in 25,000, x20).
@@ -83,6 +92,14 @@ Fight enemies to earn XP and Coins. Level up to unlock ninja ranks from Brown Ni
     - Rainbow and rarer are announced to the server; Giant and Celestial get the big banner.
     - Admin panel **Give Pet**: type `golden fox` (or `Rainbow Jade Dragon`) to give that pet, or just `Giant` to make the selected player's next hatch Giant.
     - Previews: `SCENARIO=petshots lune run run.luau` in `tools/playtest`, then `python3 tools/blender/pet_previews.py /tmp/claude-0/petshots/pets.json assets/previews/pets/mutations --ui /tmp/claude-0/petprev/ui`. Pass `UIPREVIEW_ASSETS=/tmp/claude-0/petprev/ui/assets.json` to `tools/uipreview/shoot.mjs` and the UI shots show the rendered pets.
+- **Mutation Machine** (`MutationService`, by the village spawn): reroll the mutation of a pet or a hat. A roll costs Coins (more for rarer items), a Lucky Roll 25 Spirit Shards and makes Rainbow, Giant, Celestial and Secret three times as likely. Every roll gives a mutation, sometimes a worse one (rerolling a Rainbow or better asks first). **Secret** (x50 pet stats, a black glitch with shifting neon seams, runes and a galaxy haze) only comes from the machine. Hats take mutations too: x1.1 (Big) up to x3 (Secret) on all their stats, with a name prefix and a recolour.
+- **Trading** (`TradeService`, Trade menu, `Y`): invite a player in the server, both put up to 9 pets and hats on the table, both press Ready; any change un-readies both, and after a 3 s countdown the server checks everything again and swaps the items in one step, then saves both players.
+- **Suits and mastery** (Blox Fruits style; `Config/Mastery`, `MasteryService`, Suits menu `N`): wear any ninja suit you have reached (it only changes your look). The worn suit gains mastery from kills (bosses give much more) up to 100: +0.5% damage per level, and four ultimates in the suit's element, cast with `Z X C V` from the ultimate bar:
+  - Mastery 25, movement: an invulnerable 60 stud rush through everything, bursting at the end.
+  - Mastery 50, long range: a 140 stud beam that pierces everything on it five times.
+  - Mastery 75, area: three expanding shockwaves up to 46 studs.
+  - Mastery 100, awakening: 20 s of x1.75 damage and faster moves and swings; every swing throws a wave and hits heal you.
+  - Each suit's four have their own names (Brown's Landslide Rush to Void's Void Emperor) and hit harder on higher suits. Server: `UltimateCasts` via `SkillService:CastUltimate`; looks: `UltimateEffects`. Admin panel: **Set Mastery**.
 - **Hat loot (Diablo-style):** every kill has a 1% chance to drop a hat (bosses 25%, training dummies never), only for the players who earned the kill. It lands in a pillar of light coloured by rarity; walk into it (or it flies to you after 6 s) for a toast with its name.
   - 20 base hats (Hachimaki and Straw Kasa in the village up to the Shogun Helm and Void Crown in the Void Realm), each with fixed base stats and the areas it drops in (`Config/Hats.lua`).
   - Rarities: Common (no affixes), Magic (1-2), Rare (3-4), Legendary (4 + an on-hit skill proc), Mythic (5 + a proc, x1.6 rolls). Luck makes better rarities likelier; it never changes the 1% rate.
@@ -125,19 +142,19 @@ The client only ever asks; the server decides.
 ```
 default.project.json      Rojo project
 src/shared/               ReplicatedStorage.Shared
-  Config/                 all game data: Tiers, Katanas, Enemies, Zones, Pets, Shop, Upgrades, Rebirth, Codes, Gifts, Achievements, Events, Balance, Sounds, Skills
+  Config/                 all game data: Tiers, Katanas, Enemies, Zones, Pets, Mutations, Mastery, Shop, Upgrades, Rebirth, Codes, Gifts, Achievements, Events, Balance, Sounds, Skills
   Visuals/                code-built models: KatanaBuilder, OutfitBuilder, EnemyBuilder, PetBuilder, Particles
-  Util/                   Format, TableUtil
+  Util/                   Format, TableUtil, Pose, Stamina
   Stats.lua               one function computes every derived stat (used by server and UI)
   DataTemplate.lua        save schema
   Net.lua                 remotes
 src/server/               ServerScriptService.Server
   Main.server.lua         boots the world + services
-  Services/               Data, Stat, Zone, Character, Progression, Enemy, Boss, Combat, Skill, Rebirth, Shop, Pet, Inventory, Event, Gift, Leaderboard, Achievement, Request
+  Services/               Data, Stat, Zone, Character, Progression, Enemy, Boss, Combat, Skill, Mastery, Rebirth, Shop, Pet, Mutation, Trade, Inventory, Event, Gift, Leaderboard, Achievement, Request (+ ElementCasts, UltimateCasts)
   World/                  WorldBuilder, ZoneDecor, Props
 src/client/               StarterPlayerScripts.Client
   Main.client.lua         boots the controllers
-  Controllers/            Data, UI, Sound, Camera, Notification, Effects, Animation, Combat, EnemyUI, Boss, Pet, Lighting, World, Guide
+  Controllers/            Data, UI, Sound, Camera, Notification, Effects, Animation, Combat, Dodge, Skill, Ultimate, Trade, EnemyUI, Boss, Pet, Lighting, World, Guide
   UI/                     Kit (widgets), Theme, HUD, MenuManager, MenuCommon, Overlays, Menus/*
 tools/playtest/           headless playtest (see below)
 ```
@@ -239,9 +256,10 @@ The Brown, Green and Blue tiers and their katanas (`brown_katana`, `jade_katana`
 
 ### Horde battles and nunchucks
 
-- Every camp spawns `Balance.EnemyDensity` (10x) as many enemies at `HordeHealth` (60%) health, and XP is
-  halved (`XPMultiplier`). Zones fill only while someone is in them. At most `MaxAttackers` enemies
-  hit one player at a time; the rest circle round. Swings cleave up to 12 targets.
+- Every camp spawns `Balance.EnemyDensity` (4x since the 2026-10-02 combat rework, was 10x) as many enemies
+  at `HordeHealth` (60%) health, with full XP and 1.5x Coins per kill (`XPMultiplier`, `CoinRewardMultiplier`).
+  Zones fill only while someone is in them. At most `MaxAttackers` (3) enemies hit one player at a time;
+  the rest circle round. Swings cut up to `MaxTargetsPerSwing` (4) targets.
 - Nunchucks are katanas with `Weapon = "Nunchaku"` in `Config/Katanas.lua`, with their own 5-move combo
   (`Combo.Nunchaku`). `NunchakuController` swings the free stick on each client.
 - Pets show 1-in-N odds; every egg has a Secret pet (1 in 100K up to 1 in 1B).
@@ -253,7 +271,7 @@ The Brown, Green and Blue tiers and their katanas (`brown_katana`, `jade_katana`
   jumonji, naginata, crescent and celestial heads). Optional imported mesh: `HeroSpear_<id>` (+ `__Glow`).
 - `Combo.Spear`: quick jab, double thrust, sweeping spin, rising spin-lift, overhead twirl and a lunging
   piercing finisher. Thrusts reach further (`Reach`) in a narrow lane (`Width`, checked by `CombatService`);
-  spins hit all around. The `Grip` pose joint turns the shaft in the hand and `Spin` twirls it
+  only the sweeping spin hits all around. The `Grip` pose joint turns the shaft in the hand and `Spin` twirls it
   (`Combo.SpinCFrame`), both applied by `AnimationController` to the grip weld.
 - Claws are `Weapon = "Claws"` (6 in the shop, topped by the Divine **Bartuc's Claws**, a katar modelled on
   Diablo II's Bartuc's Cut-Throat). They are dual-wielded: `CharacterService` welds a second model,
@@ -306,7 +324,8 @@ Press `F2` or the purple Admin button (top right, shown only to admins). Pick a 
 on the left, type an amount, message or kick reason in the box, then press a command.
 
 - **Player tab:** give coins or shards (a negative amount takes them away), add levels,
-  unlock every area, unlock every skill, heal, god mode, go to, bring, knock out, kick.
+  unlock every area, unlock every skill, heal, god mode, go to, bring, knock out, kick, set the
+  worn suit's mastery (type the level).
 - **Reset Progress** (for testing): type `RESET` in the box, then press it. It wipes the
   player back to a new save (level, coins, shards, rebirths, items, pets, skills, areas)
   and respawns them. Settings and the daily streak are kept.
@@ -338,3 +357,7 @@ any size.
   - Death and respawn, then leaving, saving and rejoining (the daily streak must carry over).
 
   It reports any script error. It can't check rendering or physics, so playtest in Studio for feel.
+  - `ONLY=spear,combat sh tools/playtest/playtest.sh` (or `ONLY=... lune run run.luau <place>` in `tools/playtest`) runs just those steps. Every step starts with full stamina.
+  - Steps for the 2026-10-02 features: `stamina + dodge`, `suits + mastery`, `mutation machine` and `trading` (with a server-only second player, `E.addServerPlayer`).
+  - The `skills` step can stall in the emulator (it did before these changes too); run the others with `ONLY` if it does.
+- World previews without Studio: `SCENARIO=worldshots WORLDSHOTS_ZONE=village lune run run.luau <place>` in `tools/playtest`, then `python3 tools/blender/world_preview.py /tmp/claude-0/worldshots/village.json <out dir>` renders an overview and close views of the zone.

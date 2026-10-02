@@ -49,8 +49,8 @@ function Menu.Build(ctx)
 	Kit.Stroke(Theme.Ink, 3).Parent = preview
 	Kit.Paint(preview, "Dark")
 	local title = Kit.Label({ Text = "Pick a pet or a hat", TextSize = 20, XAlign = Enum.TextXAlignment.Center, Wrapped = true, Size = UDim2.new(1, -16, 0, 44), Position = UDim2.fromOffset(8, 164), StrokeThickness = 2.5, Parent = panel })
-	local current = Kit.Label({ Text = "", TextSize = 16, Color = Theme.SubText, XAlign = Enum.TextXAlignment.Center, Size = UDim2.new(1, -16, 0, 20), Position = UDim2.fromOffset(8, 208), StrokeThickness = 2, Parent = panel })
-	local odds = Kit.New("Frame", { BackgroundTransparency = 1, Size = UDim2.new(1, -20, 0, 156), Position = UDim2.fromOffset(10, 232), Parent = panel })
+	local current = Kit.Label({ Text = "", TextSize = 15, Color = Theme.SubText, XAlign = Enum.TextXAlignment.Center, Wrapped = true, Size = UDim2.new(1, -16, 0, 36), Position = UDim2.fromOffset(8, 206), StrokeThickness = 2, Parent = panel })
+	local odds = Kit.New("Frame", { BackgroundTransparency = 1, Size = UDim2.new(1, -20, 0, 90), Position = UDim2.fromOffset(10, 246), Parent = panel })
 	Kit.New("UIGridLayout", { CellSize = UDim2.new(0.5, -4, 0, 16), CellPadding = UDim2.fromOffset(8, 1), SortOrder = Enum.SortOrder.LayoutOrder, Parent = odds })
 	local oddsRows = {}
 	for i, w in ipairs(Mutations.Machine.Weights) do

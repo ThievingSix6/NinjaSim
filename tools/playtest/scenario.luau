@@ -938,6 +938,8 @@ return function(E)
 			report("scenario", "the trade did not swap the items")
 		end
 		print("cancel with nothing open:", DC:Request("TradeCancel"))
+		E.removeServerPlayer(rival)
+		task.wait(0.5)
 	end)
 
 	step("ragdolls", function()
@@ -1079,7 +1081,8 @@ return function(E)
 		local function crowd()
 			local best, bestN = nil, -1
 			for _, enemy in ipairs(ES.ByZone.village or {}) do
-				if not enemy.Dead and not enemy.IsBoss then
+				-- a real crowd: training dummies are static and can't be rooted, frozen or slowed
+				if not enemy.Dead and not enemy.IsBoss and not enemy.Def.Static then
 					local n = #ES:InRange("village", enemy.Root.Position, 16)
 					if n > bestN then
 						best, bestN = enemy, n
@@ -1311,7 +1314,8 @@ return function(E)
 		local function crowd()
 			local best, bestN = nil, -1
 			for _, enemy in ipairs(ES.ByZone.village or {}) do
-				if not enemy.Dead and not enemy.IsBoss then
+				-- a real crowd: training dummies are static and can't be rooted, frozen or slowed
+				if not enemy.Dead and not enemy.IsBoss and not enemy.Def.Static then
 					local n = #ES:InRange("village", enemy.Root.Position, 16)
 					if n > bestN then
 						best, bestN = enemy, n
