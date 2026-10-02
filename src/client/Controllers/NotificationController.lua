@@ -1,6 +1,8 @@
 --[[
-	NotificationController: stacked toasts under the XP bar, plus big centre
-	banners for important moments (zone entered, boss spawned, unlocks).
+	NotificationController: stacked toasts under the XP bar, big centre banners for
+	important moments (zone entered, boss spawned, unlocks), and callouts: a
+	translucent glass card in a clean sans font for boss kills and hat loot, which
+	reads over the world without hiding it.
 ]]
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -139,6 +141,78 @@ function NotificationController:Banner(title: string, subtitle: string?, color: 
 	end)
 end
 
+-- Translucent callout card (boss kills, hat drops): icon, title and subtitle in
+-- Gotham, a thin accent bar on the left, slides down from the top and fades.
+local callouts: Frame
+function NotificationController:Callout(title: string, subtitle: string?, color: Color3?, icon: string?, duration: number?)
+	local accent = color or Theme.Gold
+	local iconSpace = if icon then 52 else 0
+	local titleWidth = TextService:GetTextSize(title, 26, Theme.FontClean, Vector2.new(900, 40)).X
+	local subWidth = if subtitle then TextService:GetTextSize(subtitle, 17, Theme.FontCleanBody, Vector2.new(900, 30)).X else 0
+	local width = math.clamp(math.max(titleWidth, subWidth) + 56 + iconSpace, 280, 760)
+	local card = Kit.New("Frame", {
+		BackgroundColor3 = Color3.fromRGB(14, 16, 26), BackgroundTransparency = 0.42, BorderSizePixel = 0,
+		Size = UDim2.fromOffset(width, if subtitle then 74 else 52), Name = "Callout", Parent = callouts,
+	})
+	card.LayoutOrder = -math.floor(os.clock() * 100)
+	Kit.Corner(12).Parent = card
+	local edge = Kit.New("UIStroke", { Color = accent, Thickness = 1.5, Transparency = 0.35, Parent = card })
+	Kit.New("UIGradient", {
+		Color = ColorSequence.new(accent:Lerp(Color3.new(0, 0, 0), 0.55), Color3.fromRGB(14, 16, 26)),
+		Transparency = NumberSequence.new(0.1, 0.35), Parent = card,
+	})
+	local bar = Kit.New("Frame", { BackgroundColor3 = accent, BorderSizePixel = 0, Size = UDim2.new(0, 5, 1, -16), Position = UDim2.fromOffset(9, 8), Parent = card })
+	Kit.Corner(3).Parent = bar
+	if icon then
+		Kit.Icon(card, icon, { Size = UDim2.fromOffset(42, 42), Position = UDim2.new(0, 22, 0.5, 0), AnchorPoint = Vector2.new(0, 0.5), ZIndex = 2 })
+	end
+	local function text(t: string, font: Enum.Font, size: number, c: Color3, y: number, h: number)
+		local label = Kit.New("TextLabel", {
+			BackgroundTransparency = 1, Text = t, Font = font, TextSize = size, TextColor3 = c,
+			TextXAlignment = Enum.TextXAlignment.Left, Size = UDim2.new(1, -(28 + iconSpace), 0, h),
+			Position = UDim2.fromOffset(24 + iconSpace, y), ZIndex = 2, Parent = card,
+		})
+		-- a soft dark outline keeps light text readable over bright scenery
+		Kit.New("UIStroke", { Color = Color3.new(0, 0, 0), Thickness = 1, Transparency = 0.55, Parent = label })
+		return label
+	end
+	text(title, Theme.FontClean, 26, accent:Lerp(Color3.new(1, 1, 1), 0.25), if subtitle then 9 else 11, 30)
+	if subtitle then
+		text(subtitle, Theme.FontCleanBody, 17, Color3.fromRGB(232, 236, 245), 42, 22)
+	end
+	local scale = Kit.New("UIScale", { Scale = 0.9, Parent = card })
+	Kit.Tween(scale, { Scale = 1 }, 0.25, Enum.EasingStyle.Back)
+	task.delay(duration or 3.5, function()
+		for _, d in ipairs(card:GetDescendants()) do
+			if d:IsA("TextLabel") then
+				Kit.Tween(d, { TextTransparency = 1 }, 0.4)
+			elseif d:IsA("ImageLabel") then
+				Kit.Tween(d, { ImageTransparency = 1 }, 0.4)
+			elseif d:IsA("UIStroke") then
+				Kit.Tween(d, { Transparency = 1 }, 0.4)
+			elseif d:IsA("Frame") then
+				Kit.Tween(d, { BackgroundTransparency = 1 }, 0.4)
+			end
+		end
+		Kit.Tween(card, { BackgroundTransparency = 1 }, 0.4)
+		Kit.Tween(edge, { Transparency = 1 }, 0.4)
+		task.wait(0.45)
+		card:Destroy()
+	end)
+	local cards = {}
+	for _, child in ipairs(callouts:GetChildren()) do
+		if child:IsA("Frame") then
+			table.insert(cards, child)
+		end
+	end
+	if #cards > 3 then
+		table.sort(cards, function(a, b)
+			return a.LayoutOrder > b.LayoutOrder
+		end)
+		cards[1]:Destroy()
+	end
+end
+
 function NotificationController:Start(controllers)
 	Kit, Theme = controllers.Kit, controllers.Theme
 	for emoji, name in pairs(Kit.IconAliases) do
@@ -150,6 +224,11 @@ function NotificationController:Start(controllers)
 		Position = UDim2.new(0.5, 0, 0, 132), AnchorPoint = Vector2.new(0.5, 0), Name = "Toasts", Parent = root,
 	})
 	Kit.List(Enum.FillDirection.Vertical, 6, Enum.HorizontalAlignment.Center).Parent = stack
+	callouts = Kit.New("Frame", {
+		BackgroundTransparency = 1, Size = UDim2.fromOffset(760, 260),
+		Position = UDim2.new(0.5, 0, 0.16, 0), AnchorPoint = Vector2.new(0.5, 0), Name = "Callouts", Parent = root,
+	})
+	Kit.List(Enum.FillDirection.Vertical, 8, Enum.HorizontalAlignment.Center).Parent = callouts
 	bannerHolder = Kit.New("Frame", {
 		BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 140),
 		Position = UDim2.fromScale(0.5, 0.42), AnchorPoint = Vector2.new(0.5, 0.5), Name = "Banners", Parent = root,

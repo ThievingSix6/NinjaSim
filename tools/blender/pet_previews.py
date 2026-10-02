@@ -3,6 +3,8 @@
     SCENARIO=petshots lune run run.luau          (in tools/playtest; writes /tmp/claude-0/petshots/pets.json)
     python3 tools/blender/pet_previews.py /tmp/claude-0/petshots/pets.json assets/previews/pets/mutations [--ui DIR]
 
+With --gallery it renders one sheet of every pet instead (gallery.png).
+
 Writes one sheet per pet (<pet>_mutations.png): the plain pet and every mutation,
 all with the same camera and standing on the same floor, so Big and Giant read at
 their real size. With --ui DIR it also renders each model the way Kit.Viewport frames
@@ -93,6 +95,9 @@ def part_mesh(part):
         vs = [bm.verts.new(v) for v in ((-hx, -hy, -hz), (hx, -hy, -hz), (hx, -hy, hz), (-hx, -hy, hz), (-hx, hy, hz), (hx, hy, hz))]
         for f in ((0, 1, 2, 3), (3, 2, 5, 4), (0, 4, 5, 1), (0, 3, 4), (1, 5, 2)):
             bm.faces.new([vs[i] for i in f])
+    elif shape == "Ellipsoid":
+        bmesh.ops.create_uvsphere(bm, u_segments=24, v_segments=14, radius=0.5)
+        bmesh.ops.scale(bm, vec=(sx, sy, sz), verts=bm.verts)
     elif shape == "Ball":
         d = min(sx, sy, sz)
         bmesh.ops.create_uvsphere(bm, u_segments=24, v_segments=14, radius=d / 2)
@@ -103,7 +108,7 @@ def part_mesh(part):
     else:
         bmesh.ops.create_cube(bm, size=1.0, matrix=Matrix.Diagonal((sx, sy, sz, 1)))
     for f in bm.faces:
-        f.smooth = shape in ("Ball", "Cylinder")
+        f.smooth = shape in ("Ball", "Cylinder", "Ellipsoid")
     mesh = bpy.data.meshes.new(part["name"])
     bm.to_mesh(mesh)
     bm.free()
@@ -334,6 +339,33 @@ def ui_render(name, model, zoom, out_dir, size=256):
     return path
 
 
+def gallery(data, out_dir, tile=256, cols=8):
+    """Every pet, plain, one tile each, named, in Pets.List order."""
+    from PIL import Image, ImageDraw, ImageFont
+
+    order = data.get("order") or list(data["models"].keys())
+    tiles = []
+    for i, pet in enumerate(order):
+        model = data["models"][pet][0]["model"]
+        model["viewTurn"] = math.pi
+        tiles.append((pet, ui_render("_g_%s" % pet, model, 1.1, out_dir, size=tile)))
+    rows = math.ceil(len(tiles) / cols)
+    label_h = 30
+    img = Image.new("RGB", (cols * tile, rows * (tile + label_h)), (32, 40, 56))
+    draw = ImageDraw.Draw(img)
+    font = ImageFont.truetype(FONT, 17)
+    for i, (pet, path) in enumerate(tiles):
+        x, y = (i % cols) * tile, (i // cols) * (tile + label_h)
+        im = Image.open(path).convert("RGBA")
+        back = Image.new("RGBA", im.size, (92, 118, 96, 255))
+        img.paste(Image.alpha_composite(back, im).convert("RGB"), (x, y))
+        os.remove(path)
+        draw.text((x + 8, y + tile + 4), pet.replace("_", " ").title(), font=font, fill=(235, 235, 245), stroke_width=2, stroke_fill=(20, 16, 30))
+    out = os.path.join(out_dir, "gallery.png")
+    img.save(out)
+    print("wrote", out)
+
+
 def main():
     args = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else sys.argv[1:]
     src, out_dir = args[0], args[1]
@@ -342,6 +374,9 @@ def main():
     os.makedirs(out_dir, exist_ok=True)
     data = json.load(open(src))
     mutations = data["mutations"]
+    if "--gallery" in args:
+        gallery(data, out_dir)
+        return
     for pet in data["pets"]:
         if only and pet not in only:
             continue

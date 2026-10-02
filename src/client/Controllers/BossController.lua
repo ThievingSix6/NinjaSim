@@ -300,9 +300,9 @@ function BossController:Start(c)
 			local data = c.DataController:Get()
 			local zone = data and Zones.Get(data.LastZone)
 			if zone and zone.Name == info.Zone then
-				c.NotificationController:Banner(string.upper(info.Name) .. " FALLS", by, Theme.Gold, 3)
+				c.NotificationController:Callout(info.Name .. " has fallen", by, Theme.Gold, "Trophy", 4)
 			else
-				c.NotificationController:Toast("🏆 " .. info.Name .. " was defeated!", Theme.Gold)
+				c.NotificationController:Callout(info.Name .. " was defeated", info.Zone, Theme.Gold, "Trophy", 3)
 			end
 		elseif info.Type == "Enrage" then
 			c.NotificationController:Banner("ENRAGED!", info.Name .. " grows stronger", rgb(255, 60, 40), 1.8)

@@ -76,6 +76,9 @@ local Theme = {
 	FontBody = Enum.Font.GothamBold,
 	FontNumber = Enum.Font.FredokaOne,
 	FontBig = Enum.Font.LuckiestGuy,
+	-- clean sans for callouts that must read at a glance over the world (boss kills, loot)
+	FontClean = Enum.Font.GothamBlack,
+	FontCleanBody = Enum.Font.GothamMedium,
 
 	Radius = 12,
 	RadiusSmall = 9,

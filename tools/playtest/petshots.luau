@@ -49,7 +49,10 @@ return function(E)
 			if d:IsA("BasePart") then
 				local cf = place(d.CFrame)
 				table.insert(parts, {
-					name = d.Name, class = d.ClassName, shape = if d.ClassName == "Part" then enumName(d.Shape) else nil,
+					-- a Sphere SpecialMesh makes the part an ellipsoid filling its size (PetBuilder)
+					name = d.Name, class = d.ClassName,
+					shape = if d:FindFirstChildOfClass("SpecialMesh") and d:FindFirstChildOfClass("SpecialMesh").MeshType == roblox.Enum.MeshType.Sphere then "Ellipsoid"
+						elseif d.ClassName == "Part" then enumName(d.Shape) else nil,
 					size = v3(d.Size * scale), cf = { cf:GetComponents() }, color = col(d.Color),
 					material = enumName(d.Material), transparency = d.Transparency, reflectance = d.Reflectance,
 				})
@@ -79,15 +82,21 @@ return function(E)
 		end
 		models[petId] = list
 	end
-	-- plain models for the other pets the UI shots show (Egg menu, hatch reveal)
-	for _, petId in ipairs({ "straw_dummy", "mini_samurai", "lucky_cat", "shogun_cat", "kitsune" }) do
-		models[petId] = { { mutation = "", model = serialize(PetBuilder.Build(Pets.ById[petId], 1)) } }
+	-- plain models of every other pet (the UI shots and the --gallery sheet)
+	for _, pet in ipairs(Pets.List) do
+		if not models[pet.Id] then
+			models[pet.Id] = { { mutation = "", model = serialize(PetBuilder.Build(pet, 1)) } }
+		end
 	end
 	local mutations = {}
 	for _, m in ipairs(Mutations.List) do
 		table.insert(mutations, { id = m.Id, name = m.Name, mult = m.Mult, oneIn = m.OneIn, color = col(m.Color) })
 	end
-	fs.writeFile(out .. "/pets.json", serde.encode("json", { pets = PETS, mutations = mutations, models = models }))
+	local order = {}
+	for _, pet in ipairs(Pets.List) do
+		table.insert(order, pet.Id)
+	end
+	fs.writeFile(out .. "/pets.json", serde.encode("json", { pets = PETS, order = order, mutations = mutations, models = models }))
 	print("[petshots] wrote " .. out .. "/pets.json")
 
 	-- UI: a save with one pet of each mutation, the Pets menu, the Egg menu and a hatch reveal

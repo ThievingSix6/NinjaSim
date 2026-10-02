@@ -32,6 +32,8 @@ type PetEntry = {
 	Parts: { BasePart },
 	Offsets: { CFrame },
 	Flaps: { number },
+	Hinges: { Vector3 },
+	WagY: { boolean },
 	Flying: boolean,
 	Current: CFrame,
 	Scale: number,
@@ -56,7 +58,8 @@ local function buildPet(token: string): PetEntry?
 	end
 	local model = PetBuilder.Build(def, 1, if mutation ~= "" then mutation else nil)
 	local pivot = model:GetPivot()
-	local parts, offsets, flaps = {}, {}, {}
+	local parts, offsets, flaps, hinges, wagY = {}, {}, {}, {}, {}
+	local scale = model:GetAttribute("MutationScale") or 1
 	for _, d in ipairs(model:GetDescendants()) do
 		if d:IsA("BasePart") then
 			d.Anchored = true
@@ -67,6 +70,10 @@ local function buildPet(token: string): PetEntry?
 			table.insert(parts, d)
 			table.insert(offsets, pivot:ToObjectSpace(d.CFrame))
 			table.insert(flaps, d:GetAttribute("Flap") or 0)
+			-- the hinge is in the unscaled model's space (PetBuilder); default: the part's centre
+			local hinge = d:GetAttribute("Hinge")
+			table.insert(hinges, if typeof(hinge) == "Vector3" then hinge * scale else offsets[#offsets].Position)
+			table.insert(wagY, d:GetAttribute("FlapAxis") == "Y")
 		end
 	end
 	if lowGraphics then
@@ -78,7 +85,7 @@ local function buildPet(token: string): PetEntry?
 	end
 	model.Parent = folder
 	return {
-		Model = model, Parts = parts, Offsets = offsets, Flaps = flaps,
+		Model = model, Parts = parts, Offsets = offsets, Flaps = flaps, Hinges = hinges, WagY = wagY,
 		Flying = FLYING_SHAPES[def.Shape] == true, Current = pivot,
 		Scale = model:GetAttribute("MutationScale") or 1,
 		Animate = if lowGraphics then nil else MutationLook.Animator(model),
@@ -268,7 +275,10 @@ local function step(dt: number)
 				local off = pet.Offsets[k]
 				local flap = pet.Flaps[k]
 				if flap ~= 0 then
-					off = off * CFrame.Angles(0, 0, flap * flapAngle)
+					-- wings beat about the body's long axis, tails wag about the vertical, both through their hinge
+					local h = pet.Hinges[k]
+					local turn = if pet.WagY[k] then CFrame.Angles(0, flap * flapAngle, 0) else CFrame.Angles(0, 0, flap * flapAngle)
+					off = CFrame.new(h) * turn * CFrame.new(-h) * off
 				end
 				table.insert(partsBuffer, part)
 				table.insert(cframeBuffer, pet.Current * off)

@@ -188,10 +188,7 @@ local function onLooted(payload)
 	if payload.Salvaged then
 		return -- the server already said storage was full
 	end
-	nc:Toast(name .. "  (" .. rarity.Name .. " Hat)", rarity.Color, "Crown")
-	if rarity.Index >= 4 then
-		nc:Banner(name, string.upper(rarity.Name) .. " HAT! Equip it in Hats (H)", rarity.Color, 3.5)
-	end
+	nc:Callout(name, rarity.Name .. " Hat" .. (if rarity.Index >= 4 then "  -  equip it in Hats (H)" else ""), rarity.Color, "Crown", if rarity.Index >= 4 then 4.5 else 3)
 	sound("Purchase", 0.7, 1 + rarity.Index * 0.08)
 	if controllers.HUD and controllers.HUD.SetBadge then
 		controllers.HUD:SetBadge("Hats", true)

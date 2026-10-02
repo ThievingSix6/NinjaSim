@@ -43,20 +43,20 @@ local function register(model: Instance)
 	local height = model:GetAttribute("Height") or 5
 	local gui = Kit.New("BillboardGui", {
 		Name = "EnemyBar", Adornee = adornee, AlwaysOnTop = false, LightInfluence = 0,
-		Size = if isBoss then UDim2.fromOffset(260, 44) else UDim2.fromOffset(150, 40),
+		Size = if isBoss then UDim2.fromOffset(230, 38) else UDim2.fromOffset(128, 32),
 		StudsOffsetWorldSpace = Vector3.new(0, height * 0.55 + 1.8, 0),
 		MaxDistance = if isBoss then 220 else 85, ResetOnSpawn = false, Parent = holder,
 	})
 	local level = model:GetAttribute("Level") or 1
 	local name = model:GetAttribute("DisplayName") or model.Name
 	local label = Kit.Label({
-		Text = (if isBoss then "👹 " else "") .. name .. "  Lv " .. level, Font = Theme.FontHeavy, TextSize = if isBoss then 18 else 14,
+		Text = (if isBoss then "👹 " else "") .. name .. "  Lv " .. level, Font = Theme.FontHeavy, TextSize = if isBoss then 15 else 11, -- small, so crowds stay readable (2026-10-02)
 		Color = if isBoss then rgb(255, 90, 90) else difficultyColor(level), XAlign = Enum.TextXAlignment.Center,
-		Size = UDim2.new(1, 0, 0, 20), StrokeThickness = 2, Parent = gui,
+		Size = UDim2.new(1, 0, 0, 16), StrokeThickness = 1.5, Parent = gui,
 	})
 	local back, fill, chunk
 	if not isBoss then
-		back = Kit.New("Frame", { BackgroundColor3 = rgb(20, 16, 28), BorderSizePixel = 0, Size = UDim2.new(1, -20, 0, 9), Position = UDim2.fromOffset(10, 24), Parent = gui })
+		back = Kit.New("Frame", { BackgroundColor3 = rgb(20, 16, 28), BorderSizePixel = 0, Size = UDim2.new(1, -20, 0, 7), Position = UDim2.fromOffset(10, 19), Parent = gui })
 		Kit.Corner(4).Parent = back
 		Kit.Stroke(rgb(0, 0, 0), 1.5).Parent = back
 		chunk = Kit.New("Frame", { BackgroundColor3 = rgb(255, 240, 200), BorderSizePixel = 0, Size = UDim2.fromScale(1, 1), Parent = back })
