@@ -149,6 +149,9 @@ function ProgressionService:GrantKill(player: Player, enemy)
 	end
 	self:AddCoins(player, coins)
 	self:AddXP(player, xp)
+	if services.MasteryService then
+		services.MasteryService:OnKill(player, enemy)
+	end
 	return reward
 end
 

@@ -713,6 +713,101 @@ return function(E)
 		end
 	end)
 
+	step("suits + mastery", function()
+		local DC = E.cm("Controllers.DataController")
+		local UC = E.cm("Controllers.UltimateController")
+		local MS = E.sm("MasteryService")
+		local Mastery = E.shared("Config.Mastery")
+		local data = E.sm("DataService"):Get(player)
+		local character = player.Character
+		print("wear a suit not reached yet:", DC:Request("SetSuit", "void"))
+		if data.Suit == "void" then
+			report("scenario", "wore a suit above the best rank")
+		end
+		data.BestTier = math.max(data.BestTier, 3)
+		E.sm("DataService"):Changed(player, "BestTier")
+		print("wear the blue suit:", DC:Request("SetSuit", "blue"))
+		task.wait(0.5)
+		print("suit", data.Suit, "outfit tier attribute", player.Character:GetAttribute("NinjaTier"))
+		if player.Character:GetAttribute("NinjaTier") ~= 3 then
+			report("scenario", "the blue suit was not put on")
+		end
+		-- kills give the worn suit mastery
+		local before = select(2, Mastery.Of(data, "blue"))
+		MS:OnKill(player, { Level = data.Level, IsBoss = false })
+		local afterLevel, after = Mastery.Of(data, "blue")
+		print("mastery points from a kill:", before, "->", after, "level", afterLevel)
+		if after <= before and afterLevel == 1 then
+			report("scenario", "a kill gave no mastery")
+		end
+		-- locked ultimate, then every ultimate at Mastery 100
+		local locked = UC:Cast(1)
+		print("ultimate at mastery 1 refused:", not locked)
+		if locked then
+			report("scenario", "cast an ultimate below its mastery")
+		end
+		MS:SetLevel(player, 100)
+		task.wait(0.3)
+		local damage0 = E.sm("StatService"):Get(player).Damage
+		print("damage with Mastery 100:", damage0, "(+50%)")
+		local hitsBy = {}
+		local Net = E.C["ReplicatedStorage.Shared.Net"]
+		local conn = Net.Event("SkillHits").OnClientEvent:Connect(function(payload)
+			if type(payload) == "table" and payload.Caster == player.UserId and type(payload.Skill) == "string" then
+				hitsBy[payload.Skill] = (hitsBy[payload.Skill] or 0) + #payload.Hits
+			end
+		end)
+		local root = character.HumanoidRootPart
+		local function nearEnemies()
+			for _, e in pairs(E.sm("EnemyService").All) do
+				if not e.Dead and not e.IsBoss and not e.Def.Static then
+					E.sm("ZoneService"):MarkTeleported(player)
+					local p = e.Root.Position
+					root.CFrame = CFrame.lookAt(p + Vector3.new(0, 0, 10), p)
+					return true
+				end
+			end
+			return false
+		end
+		for slot = 1, 4 do
+			local def = UC:Get(slot)
+			if not nearEnemies() then
+				report("scenario", "no enemies left for the ultimates")
+				break
+			end
+			print("cast", def.Name, "(" .. def.Kind .. ")", UC:Cast(slot))
+			task.wait(if def.Kind == "Lance" then 1.6 elseif def.Kind == "Cataclysm" then 1.6 else 0.9)
+		end
+		-- awakened: a sword swing throws a wave
+		local avatar = UC:Get(4)
+		nearEnemies()
+		local waves = 0
+		local waveConn = Net.Event("SkillCast").OnClientEvent:Connect(function(payload)
+			if type(payload) == "table" and payload.Player == player and type(payload.Info) == "table" and payload.Info.Wave then
+				waves += 1
+			end
+		end)
+		E.cm("Controllers.CombatController"):Swing()
+		task.wait(0.6)
+		waveConn:Disconnect()
+		conn:Disconnect()
+		for slot = 1, 4 do
+			local def = UC:Get(slot)
+			print(string.format("  %-18s hits %d", def.Name, hitsBy[def.Id] or 0))
+			if def.Kind ~= "Avatar" and (hitsBy[def.Id] or 0) == 0 then
+				report("scenario", def.Name .. " hit nothing")
+			end
+		end
+		local stats = E.sm("StatService"):Get(player)
+		print("awake:", stats.Avatar ~= nil, "damage", damage0, "->", stats.Damage, "waves thrown", waves, "wave hits", hitsBy[avatar.Id] or 0)
+		if not stats.Avatar then
+			report("scenario", "the Avatar did not awaken")
+		elseif waves == 0 then
+			report("scenario", "an awakened swing threw no wave")
+		end
+		print("back to the rank's suit:", DC:Request("SetSuit", ""))
+	end)
+
 	step("ragdolls", function()
 		local AC = E.cm("Controllers.AnimationController")
 		print("ragdolls made so far", AC.RagdollCount)

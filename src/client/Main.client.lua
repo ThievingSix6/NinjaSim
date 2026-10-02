@@ -33,6 +33,8 @@ local ORDER = {
 	{ "DodgeController", Controllers },
 	{ "SkillController", Controllers },
 	{ "SkillBar", UI },
+	{ "UltimateController", Controllers },
+	{ "UltimateBar", UI },
 	{ "MovementController", Controllers },
 	{ "NunchakuController", Controllers },
 	{ "EnemyUIController", Controllers },

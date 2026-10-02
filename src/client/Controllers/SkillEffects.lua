@@ -954,6 +954,8 @@ SkillEffects.Tools = {
 	end,
 }
 require(script.Parent:WaitForChild("ElementEffects")).Register(E, SkillEffects.Tools)
+-- Suit mastery ultimates (Config/Mastery) too (UltimateEffects).
+require(script.Parent:WaitForChild("UltimateEffects")).Register(E, SkillEffects.Tools)
 
 SkillEffects.Skills = E
 

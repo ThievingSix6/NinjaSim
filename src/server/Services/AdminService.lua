@@ -206,6 +206,19 @@ local COMMANDS: { [string]: { Owner: boolean?, Target: boolean?, Run: (Player, P
 			return true, string.format("%s is now level %d", (target :: Player).DisplayName, services.DataService:Get(target).Level)
 		end,
 	},
+	Mastery = {
+		Target = true,
+		Run = function(_admin, target, value)
+			local n = amountOf(value)
+			if not n or n < 1 then
+				return false, "Type a mastery level (1-100)"
+			end
+			if not services.MasteryService:SetLevel(target :: Player, n) then
+				return false, "Still loading"
+			end
+			return true, string.format("%s's worn suit is now Mastery %d", (target :: Player).DisplayName, math.clamp(math.floor(n), 1, 100))
+		end,
+	},
 	UnlockZones = {
 		Target = true,
 		Run = function(_admin, target)

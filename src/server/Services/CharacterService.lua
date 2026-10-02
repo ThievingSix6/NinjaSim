@@ -9,6 +9,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Tiers = require(Shared.Config.Tiers)
+local Mastery = require(Shared.Config.Mastery)
 local Katanas = require(Shared.Config.Katanas)
 local Zones = require(Shared.Config.Zones)
 local Shop = require(Shared.Config.Shop)
@@ -110,7 +111,7 @@ function CharacterService:ApplyOutfit(player: Player)
 	if not data or not character then
 		return
 	end
-	OutfitBuilder.Apply(character, Tiers.Get(data.Tier))
+	OutfitBuilder.Apply(character, Mastery.WornTier(data)) -- the chosen suit (Suits menu), else the rank's
 	setCollisionGroup(character)
 end
 
@@ -315,7 +316,7 @@ end
 
 function CharacterService:Start()
 	services.DataService:AddFlushHook(function(player, keys)
-		if keys.Tier then
+		if keys.Tier or keys.Suit or keys.BestTier then
 			self:ApplyOutfit(player)
 		end
 		if keys.EquippedKatana then

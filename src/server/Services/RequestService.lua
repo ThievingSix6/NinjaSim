@@ -155,6 +155,17 @@ end
 function handlers.SalvageHatsUpTo(player, rarity)
 	return services.LootService:SalvageUpTo(player, str(rarity))
 end
+-- suits and mastery (MasteryService, SkillService:CastUltimate)
+function handlers.SetSuit(player, tierId)
+	return services.MasteryService:SetSuit(player, str(tierId) or "")
+end
+function handlers.CastUltimate(player, slot, aim)
+	local s = slotOf(slot)
+	if not s then
+		return false, nil
+	end
+	return services.SkillService:CastUltimate(player, s, aim)
+end
 function handlers.Admin(player, command, targetId, value)
 	return services.AdminService:Run(player, command, targetId, value)
 end

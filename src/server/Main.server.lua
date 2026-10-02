@@ -44,6 +44,7 @@ local ORDER = {
 	"BossService",
 	"CombatService",
 	"SkillService",
+	"MasteryService",
 	"LootService",
 	"RebirthService",
 	"ShopService",

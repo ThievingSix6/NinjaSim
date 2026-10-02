@@ -10,6 +10,7 @@ local Katanas = require(Config.Katanas)
 local Pets = require(Config.Pets)
 local Upgrades = require(Config.Upgrades)
 local Shop = require(Config.Shop)
+local Mastery = require(Config.Mastery)
 
 local Stats = {}
 
@@ -56,6 +57,8 @@ function Stats.Compute(data)
 	local pets = Stats.PetBonus(data)
 	local boosts = Stats.BoostMultipliers(data)
 	local rebirth = Balance.RebirthBonus(data.Rebirths)
+	local suit = Mastery.WornTier(data)
+	local mastery = Mastery.Of(data, suit.Id)
 
 	local damage = Balance.BaseDamage(data.Level)
 		* tier.Power
@@ -64,6 +67,7 @@ function Stats.Compute(data)
 		* (1 + upgradeValue(data, "Damage"))
 		* (1 + pets.Damage)
 		* boosts.Damage
+		* (1 + Mastery.DamagePerLevel * mastery)
 
 	local attackSpeed = (1 + upgradeValue(data, "AttackSpeed")) * (1 + boosts.AttackSpeed)
 	local sandals = if (data.Utility.swift_sandals or 0) > 0 then 3 else 0
@@ -90,6 +94,8 @@ function Stats.Compute(data)
 		RebirthBonus = rebirth,
 		PetBonus = pets,
 		TierName = tier.Name,
+		Suit = suit.Id,
+		Mastery = mastery,
 		KatanaName = katana.Name,
 	}
 end

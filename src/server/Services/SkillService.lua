@@ -13,7 +13,10 @@
 	the same helpers. SkillService:CastAt(player, skillId, position, level?) fires any
 	skill at a point with no slot or cooldown (for "chance on hit" procs).
 
-	Requests (RequestService): BuySkill, UpgradeSkill, EquipSkill, UnequipSkill, CastSkill.
+	The suit mastery ultimates (Config/Mastery: Z X C V) cast through CastUltimate and
+	UltimateCasts; an awake Avatar turns sword swings into waves (AvatarSwing).
+
+	Requests (RequestService): BuySkill, UpgradeSkill, EquipSkill, UnequipSkill, CastSkill, CastUltimate.
 	Events: SkillHits (hit results, to the caster and nearby players),
 	        SkillCast (another player cast: plays their effects).
 ]]
@@ -24,6 +27,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Skills = require(Shared.Config.Skills)
 local Tiers = require(Shared.Config.Tiers)
+local Mastery = require(Shared.Config.Mastery)
 local Net = require(Shared.Net)
 
 local SkillService = {}
@@ -421,13 +425,18 @@ end
 
 -- Elemental tier skills (Config/ElementSkills): their casts live in ElementCasts and
 -- share the helpers above.
-require(script.Parent.ElementCasts).Register(CAST, {
+local kit = {
 	Strike = strike, Circle = circle, Cone = cone, Line = line, Later = later, Iframes = iframes,
 	RootOf = rootOf, ClearDistance = clearDistance,
 	Services = function()
 		return services
 	end,
-})
+}
+require(script.Parent.ElementCasts).Register(CAST, kit)
+
+-- Suit mastery ultimates (Config/Mastery) share the same helpers.
+local UltimateCasts = require(script.Parent.UltimateCasts)
+UltimateCasts.Init(kit)
 
 -- ===== requests =====
 local function notify(player: Player, text: string, color: Color3?, icon: string?)
@@ -704,6 +713,59 @@ function SkillService:CastAt(player: Player, skillId: string, position: Vector3,
 	return true, info
 end
 
+-- Casts the worn suit's ultimate in `slot` (1-4 = Z X C V) if its mastery is reached.
+function SkillService:CastUltimate(player: Player, slot: number, aim: any): (boolean, any)
+	local data = services.DataService:Get(player)
+	if not data then
+		return false, "Still loading"
+	end
+	local def = Mastery.ForSuit(Mastery.WornTier(data).Id)[slot]
+	local ok, reason = Mastery.CanUse(data, def)
+	if not ok then
+		return false, reason
+	end
+	local root = rootOf(player)
+	if not root then
+		return false, nil
+	end
+	local s = getState(player)
+	local now = os.clock()
+	if now - (s.Last[def.Id] or -math.huge) < def.Cooldown - 0.35 or now - s.LastAny < Skills.GlobalCooldown * 0.5 then
+		return false, nil
+	end
+	s.Last[def.Id] = now
+	s.LastAny = now
+	local dir = Vector3.new(root.CFrame.LookVector.X, 0, root.CFrame.LookVector.Z)
+	if typeof(aim) == "Vector3" and aim.X == aim.X and aim.Z == aim.Z and flat(aim).Magnitude > 0.01 and flat(aim).Magnitude < 1e4 then
+		dir = flat(aim)
+	end
+	dir = if dir.Magnitude > 0.01 then dir.Unit else Vector3.new(0, 0, -1)
+	local ctx = {
+		Player = player, Character = player.Character, Def = def, Level = 1, Power = def.Scale,
+		Origin = root.Position, Dir = dir,
+	}
+	local info = UltimateCasts.Cast(ctx) or {}
+	for _, other in ipairs(othersNear(player, root.Position)) do
+		Net.Event("SkillCast"):FireClient(other, { Player = player, Skill = def.Id, Level = 1, Origin = root.Position, Dir = dir, Info = info })
+	end
+	return true, { Skill = def.Id, Cooldown = def.Cooldown, Info = info }
+end
+
+-- CombatService calls this on every swing: while an Avatar is awake the swing throws its wave.
+function SkillService:AvatarSwing(player: Player, origin: Vector3, dir: Vector3)
+	local def = UltimateCasts.Avatar(player)
+	if not def then
+		return
+	end
+	local ctx = { Player = player, Character = player.Character, Def = def, Level = 1, Power = def.Scale, Origin = origin, Dir = dir }
+	local info = UltimateCasts.Wave(ctx)
+	local payload = { Player = player, Skill = def.Id, Level = 1, Origin = origin, Dir = dir, Info = info, Proc = true }
+	Net.Event("SkillCast"):FireClient(player, payload)
+	for _, other in ipairs(othersNear(player, origin)) do
+		Net.Event("SkillCast"):FireClient(other, payload)
+	end
+end
+
 function SkillService:Init(registry)
 	services = registry
 end
@@ -721,6 +783,7 @@ function SkillService:Start()
 	end)
 	Players.PlayerRemoving:Connect(function(player)
 		state[player] = nil
+		UltimateCasts.Clear(player)
 	end)
 end
 

@@ -15,6 +15,8 @@ return {
 
 	Tier = 1, -- current ninja tier (resets on rebirth)
 	BestTier = 1, -- highest tier ever reached
+	Suit = "", -- tier id of the ninja suit worn ("" = your rank's); any tier up to BestTier
+	Mastery = {}, -- [tierId] = { L = mastery level, P = points into the next } (Config/Mastery)
 
 	Skills = { shuriken_storm = 1 }, -- [skillId] = upgrade level (Config/Skills); present = learned
 	SkillSlots = { "shuriken_storm", "", "", "" }, -- skill on each hotkey slot (1-4), "" = empty

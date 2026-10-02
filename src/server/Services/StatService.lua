@@ -17,6 +17,7 @@ local STAT_KEYS = {
 	Upgrades = true, Boosts = true, Rebirths = true, Utility = true,
 	Hats = true, EquippedHat = true, -- hat stats (LootService)
 	SkillBuff = true, -- not a save key: SetModifier marks it to push buffed stats
+	Mastery = true, Suit = true, -- the worn suit's mastery bonus (Config/Mastery)
 }
 
 local services
@@ -76,6 +77,7 @@ function StatService:Refresh(player: Player)
 		stats.Damage = math.floor(stats.Damage * (mods.Damage or 1))
 		stats.AttackInterval *= mods.AttackInterval or 1
 		stats.WalkSpeed *= mods.WalkSpeed or 1
+		stats.Avatar = stats.Avatar or mods.Avatar -- a mastery Avatar is awake (SkillService:CastUltimate)
 	end
 	self.Cache[player] = stats
 	self:ApplyToCharacter(player, stats)

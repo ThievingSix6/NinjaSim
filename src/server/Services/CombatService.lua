@@ -99,6 +99,8 @@ local function onAttack(player: Player, comboIndex: any)
 	local zone = services.ZoneService:GetZone(player)
 	local look = Vector3.new(root.CFrame.LookVector.X, 0, root.CFrame.LookVector.Z)
 	look = if look.Magnitude > 0 then look.Unit else Vector3.new(0, 0, -1)
+	-- an awakened mastery Avatar throws an elemental wave with every swing
+	services.SkillService:AvatarSwing(player, root.Position, look)
 	local candidates = services.EnemyService:InRange(zone.Id, root.Position, Balance.AttackRange + move.Reach)
 	local maxTargets = Balance.MaxTargetsPerSwing + move.ExtraTargets
 

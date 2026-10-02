@@ -16,6 +16,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Skills = require(Shared.Config.Skills)
+local Mastery = require(Shared.Config.Mastery)
 local Net = require(Shared.Net)
 local SkillEffects = require(script.Parent:WaitForChild("SkillEffects"))
 
@@ -154,7 +155,7 @@ function SkillController:Cast(slot: number): boolean
 end
 
 local function contextFor(caster: Player?, skillId: string, level: number?)
-	local def = Skills.Get(skillId)
+	local def = Skills.Get(skillId) or Mastery.Get(skillId) -- skills, or suit mastery ultimates
 	local character = caster and caster.Character
 	local root = character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
 	if not def or not character or not root then
