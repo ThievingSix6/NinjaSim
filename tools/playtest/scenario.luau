@@ -876,6 +876,70 @@ return function(E)
 		print("Secret fox parts", #secret:GetDescendants(), "outline", secret:FindFirstChild("SecretOutline") ~= nil)
 	end)
 
+	step("trading", function()
+		local DC = E.cm("Controllers.DataController")
+		local TS = E.sm("TradeService")
+		local DS = E.sm("DataService")
+		local rival = E.addServerPlayer("Rival", 777)
+		for _ = 1, 60 do
+			if DS:Get(rival) then
+				break
+			end
+			task.wait(0.1)
+		end
+		local mine, theirs = DS:Get(player), DS:Get(rival)
+		if not theirs then
+			report("scenario", "the second player's save never loaded")
+			return
+		end
+		local myPet = E.sm("PetService"):Grant(player, "kitsune", "Golden")
+		local theirPet = E.sm("PetService"):Grant(rival, "panda_cub")
+		local Hats = E.shared("Config.Hats")
+		theirs.HatSerial += 1
+		local theirHat = tostring(theirs.HatSerial)
+		theirs.Hats[theirHat] = Hats.Roll(1, 12, 0, false, nil, "Magic")
+		print("request:", DC:Request("TradeRequest", 777))
+		print("accept:", TS:Respond(rival, player.UserId, true))
+		print("offer my kitsune:", DC:Request("TradeOffer", "Pet", myPet, true))
+		print("rival offers panda + hat:", TS:Offer(rival, "Pet", theirPet, true), TS:Offer(rival, "Hat", theirHat, true))
+		local refused = DC:Request("TradeOffer", "Pet", "no-such-pet", true)
+		print("offer something I don't own refused:", not refused)
+		if refused then
+			report("scenario", "offered a pet I don't own")
+		end
+		DC:Request("TradeReady", true)
+		TS:SetReady(rival, true)
+		-- the rival changes their offer during the countdown: both are un-readied, nothing swaps
+		task.wait(1)
+		TS:Offer(rival, "Hat", theirHat, false)
+		task.wait(3)
+		print("after a change mid-countdown: I still have the kitsune", mine.Pets[myPet] ~= nil, "rival still has the panda", theirs.Pets[theirPet] ~= nil)
+		if not mine.Pets[myPet] or not theirs.Pets[theirPet] then
+			report("scenario", "the trade went through after an offer changed")
+		end
+		TS:Offer(rival, "Hat", theirHat, true)
+		DC:Request("TradeReady", true)
+		TS:SetReady(rival, true)
+		task.wait(3.6)
+		local gotPanda, gotHat, gaveKitsune = false, false, true
+		for _, pet in pairs(mine.Pets) do
+			gotPanda = gotPanda or pet.Id == "panda_cub"
+		end
+		for _, hat in pairs(mine.Hats) do
+			gotHat = gotHat or (Hats.Valid(hat) and hat.R == "Magic")
+		end
+		for _, pet in pairs(theirs.Pets) do
+			if pet.Id == "kitsune" and pet.Mutation == "Golden" then
+				gaveKitsune = false
+			end
+		end
+		print("after the trade: I got the panda", gotPanda, "and the hat", gotHat, "| rival has my Golden kitsune", not gaveKitsune, "| my kitsune uid gone", mine.Pets[myPet] == nil)
+		if not gotPanda or not gotHat or gaveKitsune or mine.Pets[myPet] ~= nil then
+			report("scenario", "the trade did not swap the items")
+		end
+		print("cancel with nothing open:", DC:Request("TradeCancel"))
+	end)
+
 	step("ragdolls", function()
 		local AC = E.cm("Controllers.AnimationController")
 		print("ragdolls made so far", AC.RagdollCount)

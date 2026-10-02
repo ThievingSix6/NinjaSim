@@ -155,6 +155,22 @@ end
 function handlers.SalvageHatsUpTo(player, rarity)
 	return services.LootService:SalvageUpTo(player, str(rarity))
 end
+-- trading (TradeService)
+function handlers.TradeRequest(player, userId)
+	return services.TradeService:Request(player, if type(userId) == "number" then userId else nil)
+end
+function handlers.TradeRespond(player, userId, accept)
+	return services.TradeService:Respond(player, if type(userId) == "number" then userId else nil, accept == true)
+end
+function handlers.TradeOffer(player, kind, uid, add)
+	return services.TradeService:Offer(player, str(kind), str(uid), add == true)
+end
+function handlers.TradeReady(player, ready)
+	return services.TradeService:SetReady(player, ready == true)
+end
+function handlers.TradeCancel(player)
+	return services.TradeService:Cancel(player)
+end
 -- the Mutation Machine (MutationService)
 function handlers.MutateItem(player, kind, uid, lucky)
 	return services.MutationService:Roll(player, str(kind), str(uid), lucky == true)

@@ -34,6 +34,7 @@ Net.Events = {
 	"HatLoot", -- hat loot: drops, pickups, procs, life steal heals (LootService)
 	"Dodged", -- another player dodged (their roll pose)
 	"Evaded", -- an enemy or boss hit missed you during a dodge's i-frames
+	"Trade", -- trade invites and the shared trade window's state (TradeService)
 	-- client -> server
 	"Attack",
 	"Dodge", -- the local player rolled (CombatService opens the i-frames)

@@ -35,6 +35,7 @@ local ORDER = {
 	{ "SkillBar", UI },
 	{ "UltimateController", Controllers },
 	{ "UltimateBar", UI },
+	{ "TradeController", Controllers },
 	{ "MovementController", Controllers },
 	{ "NunchakuController", Controllers },
 	{ "EnemyUIController", Controllers },

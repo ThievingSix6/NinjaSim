@@ -50,6 +50,7 @@ local ORDER = {
 	"ShopService",
 	"PetService",
 	"MutationService",
+	"TradeService",
 	"InventoryService",
 	"EventService",
 	"GiftService",

@@ -42,6 +42,7 @@ local GRID_BUTTONS = {
 	{ Name = "Inventory", Icon = "Inventory", Color = "Blue" },
 	{ Name = "Hats", Icon = "Crown", Color = "Cyan" },
 	{ Name = "Suits", Icon = "Star", Color = "Gold" },
+	{ Name = "Trade", Icon = "Friends", Color = "Sky" },
 	{ Name = "Rebirth", Icon = "Rebirth", Color = "Purple" },
 	{ Name = "Trophies", Icon = "Trophy", Color = "Gold" },
 	{ Name = "Codes", Icon = "Codes", Color = "Pink" },
@@ -367,7 +368,7 @@ function HUD:Start(c)
 	})
 
 	-- ===== left: Free Gifts + square menu grid =====
-	local left = Kit.New("Frame", { BackgroundTransparency = 1, Size = UDim2.fromOffset(190, 400), Position = UDim2.fromOffset(16, 158), Name = "Left", Parent = root })
+	local left = Kit.New("Frame", { BackgroundTransparency = 1, Size = UDim2.fromOffset(270, 400), Position = UDim2.fromOffset(16, 158), Name = "Left", Parent = root })
 	local gifts = Kit.Button({
 		Name = "Gifts", Text = "Free Gifts", Icon = "Gift", IconSize = 44, TextSize = 23, Color = "Green",
 		Size = UDim2.fromOffset(176, 52), Radius = 12, StrokeThickness = 3.5, Parent = left,
@@ -382,7 +383,8 @@ function HUD:Start(c)
 		Text = "", Font = Theme.FontNumber, TextSize = 16, Color = Theme.Gold, XAlign = Enum.TextXAlignment.Center,
 		Size = UDim2.new(1, 0, 0, 18), Position = UDim2.new(0, 0, 1, 3), Name = "GiftTimer", Parent = gifts,
 	})
-	local grid = Kit.New("Frame", { BackgroundTransparency = 1, Size = UDim2.fromOffset(180, 384), Position = UDim2.fromOffset(0, 80), Name = "Grid", Parent = left })
+	-- three columns of tiles (nine menus)
+	local grid = Kit.New("Frame", { BackgroundTransparency = 1, Size = UDim2.fromOffset(264, 300), Position = UDim2.fromOffset(0, 80), Name = "Grid", Parent = left })
 	Kit.New("UIGridLayout", { CellSize = UDim2.fromOffset(84, 84), CellPadding = UDim2.fromOffset(8, 12), SortOrder = Enum.SortOrder.LayoutOrder, Parent = grid })
 	for i, def in ipairs(GRID_BUTTONS) do
 		local button, badge = tileButton(grid, def, i)

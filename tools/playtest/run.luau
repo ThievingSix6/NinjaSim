@@ -108,6 +108,7 @@ prop("Players", "LocalPlayer", function() return players[1] end)
 method("Player", "HasAppearanceLoaded", function() return true end)
 method("Player", "Kick", function(_, msg) report("Kick", tostring(msg)) end)
 method("Player", "GetMouse", function() return { Hit = CFrame.new(), Target = nil } end)
+method("Player", "IsFriendsWith", function() return false end)
 prop("Player", "Character", function(p) return E.characters[p] end, function(p, v) E.characters[p] = v end)
 E.characters = {}
 
@@ -583,6 +584,21 @@ followCamera = function()
 	if p then
 		camera.CFrame = CFrame.lookAt(p + Vector3.new(0, 14, 24), p)
 	end
+end
+
+-- A second player that exists only on the server (no client runs for it): for trades.
+-- Remote events to it still land on the one client here, so check results server-side.
+E.addServerPlayer = function(name, userId)
+	local other = wrap(RInstance.new("Player"))
+	other.Name = name
+	other.UserId = userId
+	other.DisplayName = name
+	wrap(RInstance.new("PlayerGui")).Parent = other
+	other.Parent = PlayersService
+	table.insert(players, other)
+	signalFor(PlayersService, "PlayerAdded"):Fire(other)
+	other:LoadCharacter()
+	return other
 end
 
 E.S, E.C, E.player, E.players, E.stores, E.tagged, E.CS, E.Workspace, E.bindToClose = S, C, player, players, stores, tagged, CS, Workspace, bindToClose

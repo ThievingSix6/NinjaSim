@@ -54,6 +54,9 @@ function MutationService:Roll(player: Player, kind: any, uid: any, lucky: any): 
 	if type(uid) ~= "string" or type(item) ~= "table" then
 		return false, "You don't own that"
 	end
+	if services.TradeService and services.TradeService:IsOffered(player, kind, uid) then
+		return false, "Take it out of the trade first"
+	end
 	if lastRoll[player] and os.clock() - lastRoll[player] < 1.2 then
 		return false, "The machine is still spinning..."
 	end
