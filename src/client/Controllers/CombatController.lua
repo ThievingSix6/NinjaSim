@@ -5,6 +5,11 @@
 	decides what was hit. Results come back as CombatResult / EnemyDied and drive
 	the feedback (damage numbers, sparks, hit stop, shake, coins, XP pops, kill
 	streaks), timed to the moment the blade lands in the animation.
+
+	Souls-style pacing (2026-10-02): each swing spends stamina (Util/Stamina; the HUD
+	shows this client's copy of the pool, the server keeps the real one), a press
+	during a swing is buffered and plays as soon as the move allows, and the player
+	walks slowly while a swing plays (MovementController reads IsAttacking).
 ]]
 
 local Players = game:GetService("Players")
@@ -18,6 +23,7 @@ local Net = require(Shared.Net)
 local Balance = require(Shared.Config.Balance)
 local Combo = require(Shared.Config.Combo)
 local Format = require(Shared.Util.Format)
+local Stamina = require(Shared.Util.Stamina)
 
 local CombatController = {}
 
@@ -29,6 +35,9 @@ local combo = 0
 local lastWeapon = "Katana"
 local hitMoment = 0 -- when the current move's blade lands
 local holding = false
+local bufferedUntil = 0 -- a press during a swing plays when the move allows, until then
+local attackingUntil = 0 -- the player is committed to the current swing until then
+local BUFFER = 0.45
 local streak = 0
 local lastKill = 0
 
@@ -64,7 +73,42 @@ local function nearestEnemy(range: number): (Model?, number)
 	return best, bestDist
 end
 
-function CombatController:Swing()
+CombatController.Stamina = Stamina.new(os.clock())
+
+-- The local player's stamina right now (0..Balance.Stamina.Max).
+function CombatController:GetStamina(): number
+	return Stamina.Get(self.Stamina, os.clock())
+end
+
+-- Spends stamina if there is any left; false when the pool is empty.
+function CombatController:TrySpend(cost: number): boolean
+	local now = os.clock()
+	if not Stamina.CanAct(self.Stamina, now) then
+		if controllers.HUD and controllers.HUD.FlashStamina then
+			controllers.HUD:FlashStamina()
+		end
+		return false
+	end
+	Stamina.Spend(self.Stamina, now, cost)
+	return true
+end
+
+-- True while a swing is still playing out (the player is committed to it).
+function CombatController:IsAttacking(): boolean
+	return os.clock() < attackingUntil
+end
+
+-- True until the current swing's blade lands: a dodge can't cut that short.
+function CombatController:InWindup(): boolean
+	return os.clock() < hitMoment
+end
+
+-- Called by DodgeController: a roll cancels any buffered swing.
+function CombatController:ClearBuffer()
+	bufferedUntil = 0
+end
+
+function CombatController:Swing(buffer: boolean?)
 	local root = getRoot()
 	local data = controllers.DataController:Get()
 	if not root or not data then
@@ -73,7 +117,16 @@ function CombatController:Swing()
 	local stats = controllers.DataController:GetStats()
 	local interval = if stats then stats.AttackInterval else Balance.BaseAttackInterval
 	local now = os.clock()
-	if now < nextSwing then
+	if now < nextSwing or (controllers.DodgeController and controllers.DodgeController:IsDodging()) then
+		if buffer then
+			bufferedUntil = now + BUFFER
+		end
+		return
+	end
+	bufferedUntil = 0
+	local weapon = Combo.WeaponOf(player.Character)
+	local upcoming = if weapon == lastWeapon and combo > 0 and now <= chainOpenUntil then (combo % #Combo.MovesFor(weapon)) + 1 else 1
+	if not self:TrySpend(Stamina.MoveCost(Combo.Get(upcoming, weapon))) then
 		return
 	end
 	local weapon = Combo.WeaponOf(player.Character)
@@ -88,9 +141,19 @@ function CombatController:Swing()
 	nextSwing = now + interval * move.Cooldown
 	chainOpenUntil = nextSwing + Combo.ChainWindow
 	hitMoment = now + move.HitAt * duration
+	attackingUntil = now + math.min(duration * 0.85, interval * move.Cooldown)
 
-	-- aim assist: turn toward the closest enemy in reach so swings feel fair
-	local target, dist = nearestEnemy(Balance.AttackRange + math.max(5, move.Reach))
+	-- aim assist: turn toward the closest enemy in reach, but only one already
+	-- roughly in front (no snapping round to cut what's behind you)
+	local target, dist = nearestEnemy(Balance.AttackRange + math.max(3, move.Reach))
+	if target and target.PrimaryPart then
+		local tp = target.PrimaryPart.Position
+		local to = Vector3.new(tp.X - root.Position.X, 0, tp.Z - root.Position.Z)
+		local facing = Vector3.new(root.CFrame.LookVector.X, 0, root.CFrame.LookVector.Z)
+		if to.Magnitude > 0.5 and facing.Magnitude > 0.01 and facing.Unit:Dot(to.Unit) < 0.17 then
+			target = nil
+		end
+	end
 	if target and target.PrimaryPart and dist > 0.5 then
 		local tp = target.PrimaryPart.Position
 		local flatTarget = Vector3.new(tp.X, root.Position.Y, tp.Z)
@@ -133,7 +196,7 @@ end
 
 local function showHits(result)
 	local move = Combo.Get(result.Move or 1, Combo.WeaponOf(player.Character))
-	controllers.AnimationController:HitStop(player.Character, if move.Finisher then 0.12 else 0.05)
+	controllers.AnimationController:HitStop(player.Character, if move.Finisher then 0.15 else 0.07)
 	local anyCrit = false
 	for _, hit in ipairs(result.Hits) do
 		local top = hit.Position + Vector3.new(0, (hit.Height or 5) * 0.75, 0)
@@ -203,7 +266,7 @@ function CombatController:Start(c)
 		end
 		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.KeyCode == Enum.KeyCode.ButtonR2 or input.KeyCode == Enum.KeyCode.F then
 			holding = true
-			self:Swing()
+			self:Swing(true)
 		end
 	end)
 	UserInputService.InputEnded:Connect(function(input)
@@ -214,7 +277,7 @@ function CombatController:Start(c)
 
 	RunService.Heartbeat:Connect(function()
 		local data = c.DataController:Get()
-		if holding then
+		if holding or os.clock() < bufferedUntil then
 			self:Swing()
 		elseif data and data.Settings.AutoSwing and (data.Utility.auto_swing or 0) > 0 then
 			local target = nearestEnemy(Balance.AttackRange)
@@ -222,6 +285,11 @@ function CombatController:Start(c)
 				self:Swing()
 			end
 		end
+	end)
+
+	player.CharacterAdded:Connect(function()
+		Stamina.Refill(self.Stamina, os.clock())
+		attackingUntil, bufferedUntil = 0, 0
 	end)
 
 	Net.Event("CombatResult").OnClientEvent:Connect(onCombatResult)

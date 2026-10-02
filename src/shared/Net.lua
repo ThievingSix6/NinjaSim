@@ -32,8 +32,11 @@ Net.Events = {
 	"SkillCast", -- another player cast a skill (their effects)
 	"SkillHits", -- skill damage results (caster: numbers; others: flinches)
 	"HatLoot", -- hat loot: drops, pickups, procs, life steal heals (LootService)
+	"Dodged", -- another player dodged (their roll pose)
+	"Evaded", -- an enemy or boss hit missed you during a dodge's i-frames
 	-- client -> server
 	"Attack",
+	"Dodge", -- the local player rolled (CombatService opens the i-frames)
 }
 
 Net.Functions = {

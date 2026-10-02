@@ -28,6 +28,8 @@ return {
 	BossSlam = { Id = "rbxasset://sounds/swordlunge.wav", Volume = 0.9, Pitch = { 0.4, 0.5 } },
 	Hurt = { Id = "rbxasset://sounds/swordlunge.wav", Volume = 0.3, Pitch = { 0.6, 0.7 } },
 	DoubleJump = { Id = "rbxasset://sounds/swordlunge.wav", Volume = 0.35, Pitch = { 1.8, 2.0 } },
+	Dodge = { Id = "rbxasset://sounds/swordlunge.wav", Volume = 0.4, Pitch = { 1.25, 1.4 } },
+	Evade = { Id = "rbxasset://sounds/unsheath.wav", Volume = 0.45, Pitch = { 1.6, 1.7 } },
 	Equip = { Id = "rbxasset://sounds/unsheath.wav", Volume = 0.5, Pitch = { 1.1, 1.2 } },
 
 	-- Background music: these tracks play one after another and repeat, in every area.

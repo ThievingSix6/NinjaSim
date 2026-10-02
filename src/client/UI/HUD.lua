@@ -136,6 +136,18 @@ function HUD:PulseCoins()
 	Kit.Tween(scale, { Scale = 1 }, 0.2, Enum.EasingStyle.Back)
 end
 
+-- The stamina bar shakes when an attack or dodge is tried with an empty pool.
+local lastStaminaFlash = 0
+function HUD:FlashStamina()
+	local now = os.clock()
+	if not refs.StaminaScale or now - lastStaminaFlash < 0.6 then
+		return
+	end
+	lastStaminaFlash = now
+	refs.StaminaScale.Scale = 1.25
+	Kit.Tween(refs.StaminaScale, { Scale = 1 }, 0.25, Enum.EasingStyle.Back)
+end
+
 function HUD:SetCombo(n: number)
 	if n < 2 then
 		return
@@ -423,12 +435,20 @@ function HUD:Start(c)
 	refs.XPText = Kit.Label({ Text = "", Font = Theme.FontNumber, TextSize = 20, XAlign = Enum.TextXAlignment.Right, Size = UDim2.new(0.5, -12, 1, 0), Position = UDim2.new(0.5, 0, 0, 0), ZIndex = bar.ZIndex + 3, StrokeThickness = 3, Parent = bar })
 	refs.LevelScale = Kit.New("UIScale", { Parent = bar })
 	local hp, setHP = Kit.ProgressBar({
-		Size = UDim2.new(0.7, 0, 0, 26), Position = UDim2.new(0.5, 0, 0, 78), AnchorPoint = Vector2.new(0.5, 0),
-		Paint = "Green", Radius = 8, TextSize = 16, Instant = true, Parent = centre,
+		Size = UDim2.new(0.7, 0, 0, 22), Position = UDim2.new(0.5, 0, 0, 73), AnchorPoint = Vector2.new(0.5, 0),
+		Paint = "Green", Radius = 8, TextSize = 15, Instant = true, Parent = centre,
 	})
-	Kit.Icon(centre, "Heart", { Size = UDim2.fromOffset(38, 38), Position = UDim2.new(0.15, -22, 0, 72), ZIndex = 5 })
+	Kit.Icon(centre, "Heart", { Size = UDim2.fromOffset(34, 34), Position = UDim2.new(0.15, -20, 0, 67), ZIndex = 5 })
 	refs.SetHP = setHP
 	refs.HPBar = hp
+	-- stamina (attacks and dodges spend it; CombatController keeps the pool)
+	local stamina, setStamina = Kit.ProgressBar({
+		Size = UDim2.new(0.6, 0, 0, 11), Position = UDim2.new(0.5, 0, 0, 98), AnchorPoint = Vector2.new(0.5, 0),
+		Paint = "Gold", Radius = 5, TextSize = 1, StrokeThickness = 2.5, Instant = true, Name = "Stamina", Parent = centre,
+	})
+	refs.SetStamina = setStamina
+	refs.StaminaBar = stamina
+	refs.StaminaScale = Kit.New("UIScale", { Parent = stamina })
 
 	-- ===== right: next goal card + boost timers =====
 	local right = Kit.New("Frame", {
@@ -506,6 +526,16 @@ function HUD:Start(c)
 		attack.InputEnded:Connect(function(input)
 			if input.UserInputType == Enum.UserInputType.Touch then
 				held = false
+			end
+		end)
+		-- dodge roll: rolls the way the thumbstick points, or hops back
+		local dodge = Kit.Button({
+			Text = "ROLL", TextSize = 22, Color = "Sky", Size = UDim2.fromOffset(84, 84), Radius = 42,
+			Position = UDim2.new(1, -270, 1, -170), AnchorPoint = Vector2.new(0.5, 0.5), StrokeThickness = 4, Parent = root,
+		})
+		dodge.MouseButton1Down:Connect(function()
+			if c.DodgeController then
+				c.DodgeController:Dodge()
 			end
 		end)
 	end
@@ -616,13 +646,22 @@ function HUD:Start(c)
 		end
 	end)
 
-	-- per-frame: health, combo fade, boost timers
+	-- per-frame: health, stamina, combo fade, boost timers
 	local lastBoostTick = 0
+	local lastStamina = -1
 	RunService.RenderStepped:Connect(function()
 		local character = Players.LocalPlayer.Character
 		local humanoid = character and character:FindFirstChildOfClass("Humanoid")
 		if humanoid then
 			setHP(humanoid.Health / math.max(humanoid.MaxHealth, 1), Format.Abbrev(math.ceil(humanoid.Health)) .. " / " .. Format.Abbrev(humanoid.MaxHealth))
+		end
+		local combat = c.CombatController
+		if combat then
+			local ratio = combat:GetStamina() / Balance.Stamina.Max
+			if ratio ~= lastStamina then
+				lastStamina = ratio
+				refs.SetStamina(ratio)
+			end
 		end
 		if refs.Combo.Visible and os.clock() > comboHideAt then
 			refs.Combo.Visible = false

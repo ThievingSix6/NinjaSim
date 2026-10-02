@@ -407,11 +407,15 @@ local function makeRunService(isServer)
 end
 local serverRun, clientRun = makeRunService(true), makeRunService(false)
 local frames = 0
+local followCamera -- set once the player exists: the camera trails them like the default camera
 task.spawn(function()
 	local last = os.clock()
 	while true do
 		task.wait(1 / 30)
 		frames += 1
+		if followCamera then
+			pcall(followCamera)
+		end
 		local now = os.clock()
 		local dt = now - last
 		last = now
@@ -567,6 +571,20 @@ task.wait(0.3)
 player:LoadCharacter()
 task.wait(3)
 
+-- E.CameraFocus (a function returning a position) points it elsewhere: welds don't move
+-- parts here, so a welded weapon stays where it was built
+followCamera = function()
+	local p = E.CameraFocus and E.CameraFocus()
+	if not p then
+		local character = player.Character
+		local root = character and character:FindFirstChild("HumanoidRootPart")
+		p = root and root.Position
+	end
+	if p then
+		camera.CFrame = CFrame.lookAt(p + Vector3.new(0, 14, 24), p)
+	end
+end
+
 E.S, E.C, E.player, E.players, E.stores, E.tagged, E.CS, E.Workspace, E.bindToClose = S, C, player, players, stores, tagged, CS, Workspace, bindToClose
 E.sm = function(name) return S["ServerScriptService.Server.Services." .. name] end
 E.cm = function(path) return C["Players.TestNinja.PlayerScripts.Client." .. path] end
@@ -578,6 +596,7 @@ E.RInstance = RInstance
 
 local scenario = if process.env.SCENARIO == "uishots" then require("./uishots")
 	elseif process.env.SCENARIO == "petshots" then require("./petshots")
+	elseif process.env.SCENARIO == "worldshots" then require("./worldshots")
 	else require("./scenario")
 scenario(E)
 

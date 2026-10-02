@@ -130,7 +130,7 @@ Pets.Eggs = {
 		Pets = { { "void_wisp", 45 }, { "void_spirit", 32 }, { "rift_walker", 17 }, { "void_dragon", 5.9 }, { "void_sovereign", 0.1 }, { "omega_titan", 1e-7 } },
 	},
 	{
-		Id = "spirit_egg", Name = "Spirit Egg", Zone = "village", Currency = "Shards", Cost = 4, RequiredRebirths = 2, Offset = Vector2.new(-105, 38),
+		Id = "spirit_egg", Name = "Spirit Egg", Zone = "village", Currency = "Shards", Cost = 4, RequiredRebirths = 2, Offset = Vector2.new(-160, 52),
 		Color = Color3.fromRGB(150, 255, 240), Accent = Color3.fromRGB(255, 255, 255),
 		Pets = { { "spirit_owl", 60 }, { "spirit_stag", 30 }, { "guardian_spirit", 9 }, { "ascended_kirin", 1 }, { "spirit_king", 1e-5 } },
 	},

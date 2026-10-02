@@ -500,7 +500,7 @@ local function buildSpawn(zone, parent: Instance)
 end
 
 local AMBIENT = {
-	Village = { "Petals", { Rate = 25 } },
+	Village = { "Petals", { Rate = 34 } }, -- cherry blossom season
 	Bamboo = { "Petals", { Rate = 18, Color = ColorSequence.new(rgb(170, 220, 120), rgb(110, 170, 70)) } },
 	Samurai = { "Petals", { Rate = 20 } },
 	Demon = { "Embers", { Rate = 30, Lifetime = NumberRange.new(4, 7), Speed = NumberRange.new(1, 3) } },
@@ -515,16 +515,16 @@ local function buildAmbient(zone, parent: Instance)
 	if not preset then
 		return
 	end
-	-- one emitter over the valley; the rate scales with its area so the density matches the village
-	local size = if zone.Index == 1 then Vector2.new(Zones.Size - 40, Zones.Size - 40) else Vector2.new(Zones.Spacing - 80, Zones.Depth - 140)
-	local emitterPart = Props.Part(parent, Vector3.new(size.X, 1, size.Y), CFrame.new(zone.Center + Vector3.new(0, if zone.Index == 1 then 18 else 34, 0)), Color3.new())
+	-- one emitter over the valley; the rate scales with its area (280 x 280 studs is the base)
+	local size = Vector2.new(Zones.Spacing - 80, Zones.Depth - 140)
+	local emitterPart = Props.Part(parent, Vector3.new(size.X, 1, size.Y), CFrame.new(zone.Center + Vector3.new(0, 34, 0)), Color3.new())
 	emitterPart.Name = "AmbientEmitter"
 	emitterPart.Transparency = 1
 	emitterPart.CanCollide = false
 	emitterPart.CanQuery = false
 	emitterPart.CanTouch = false
 	local overrides = table.clone(preset[2])
-	overrides.Rate = (overrides.Rate or 20) * math.min(size.X * size.Y / (Zones.Size - 40) ^ 2, 3)
+	overrides.Rate = (overrides.Rate or 20) * math.min(size.X * size.Y / 280 ^ 2, 3)
 	overrides.Lifetime = overrides.Lifetime or NumberRange.new(6, 10)
 	overrides.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0), NumberSequenceKeypoint.new(0.1, 0.4), NumberSequenceKeypoint.new(1, 0.3) })
 	local emitter = Particles.Create(preset[1], emitterPart, overrides)

@@ -65,12 +65,15 @@ local function getMenu(name: string)
 	return menu
 end
 
+MenuManager.ClosedAt = 0
+
 function MenuManager:Close()
 	if not current or busy then
 		return
 	end
 	local menu = built[current]
 	current = nil
+	self.ClosedAt = os.clock() -- the same Circle press must not also dodge (DodgeController)
 	if menu.OnClose then
 		task.spawn(menu.OnClose)
 	end

@@ -24,7 +24,6 @@ local Zones = {}
 local rgb = Color3.fromRGB
 local v2 = Vector2.new
 
-Zones.Size = 320 -- the village square (other zones are shaped by Config/ZoneLayouts)
 Zones.Spacing = 560 -- centre-to-centre distance; each zone owns a strip this wide
 Zones.Depth = 600 -- the land reaches -Depth/2 .. Depth/2 across the row
 Zones.GroundY = 0
@@ -34,9 +33,9 @@ Zones.List = {
 		Id = "village", Name = "Ninja Village", Level = 1, CostLevel = nil,
 		Egg = "village_egg", Boss = { Enemy = "BanditKing", Level = 8, Respawn = 150 },
 		Camps = {
-			{ Enemy = "TrainingDummy", Level = 1, Count = 6, Offset = v2(-80, -55), Radius = 20 },
-			{ Enemy = "RogueNinja", Level = 3, Count = 6, Offset = v2(-10, 60), Radius = 24 },
-			{ Enemy = "Bandit", Level = 6, Count = 5, Offset = v2(70, -50), Radius = 24 },
+			{ Enemy = "TrainingDummy", Level = 1, Count = 6, Offset = v2(-125, -95), Radius = 20 },
+			{ Enemy = "RogueNinja", Level = 3, Count = 6, Offset = v2(-15, 105), Radius = 24 },
+			{ Enemy = "Bandit", Level = 6, Count = 5, Offset = v2(95, -110), Radius = 24 },
 		},
 		Theme = {
 			Ground = Enum.Material.Grass, GroundColor = rgb(106, 160, 72),

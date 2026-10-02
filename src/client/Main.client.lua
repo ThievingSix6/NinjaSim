@@ -30,6 +30,7 @@ local ORDER = {
 	{ "HUD", UI },
 	{ "Overlays", UI },
 	{ "CombatController", Controllers },
+	{ "DodgeController", Controllers },
 	{ "SkillController", Controllers },
 	{ "SkillBar", UI },
 	{ "MovementController", Controllers },

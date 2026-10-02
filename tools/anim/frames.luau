@@ -31,7 +31,7 @@ local moves = Combo.MovesFor(WEAPON)
 for i, move in ipairs(moves) do
 	-- holding attack starts the next move as soon as this one's cooldown ends (at the
 	-- base attack speed); the last move plays out
-	local length = if i < #moves then move.Cooldown * 0.42 else move.Duration
+	local length = if i < #moves then move.Cooldown * 0.62 else move.Duration -- 0.62 = Balance.BaseAttackInterval
 	local frames = {}
 	local n = math.floor(length * FPS + 0.5)
 	local last, lastWeight

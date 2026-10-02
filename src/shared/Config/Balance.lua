@@ -12,28 +12,64 @@ local Katanas = require(script.Parent.Katanas)
 
 local Balance = {}
 
--- Combat
-Balance.BaseAttackInterval = 0.42 -- seconds between swings
-Balance.MinAttackInterval = 0.18
+-- Combat (justin, 2026-10-02: "slower paced like Dark Souls or Elden Ring"). Swings are
+-- weightier and fewer, each one only cuts what is actually in front of the blade, and
+-- every attack and dodge spends stamina, so a fight is a rhythm of strike, roll, recover.
+Balance.BaseAttackInterval = 0.62 -- seconds between swings
+Balance.MinAttackInterval = 0.36 -- attack speed can't turn swings back into a blur
 Balance.AttackRange = 13 -- studs from root to enemy root (plus enemy radius)
 Balance.AttackArcDot = -0.1 -- enemies must be roughly in front (cos of ~95 degrees)
-Balance.MaxTargetsPerSwing = 12 -- swings cleave through crowds
+Balance.MaxTargetsPerSwing = 4 -- a swing cuts the few enemies it reaches, not the whole crowd
 Balance.BaseCritChance = 0.05
 Balance.CritMultiplier = 2
-Balance.ComboWindow = 1.4 -- seconds before combo resets
+Balance.ComboWindow = 1.8 -- seconds before combo resets
 Balance.ComboBonusPerHit = 0.01 -- +1% damage per combo hit
 Balance.MaxComboBonus = 0.3
+Balance.SwingMoveSpeed = 0.35 -- walk speed multiplier while a swing plays (you commit to it)
+
+-- Stamina (shared/Util/Stamina): attacks and dodges spend it, and it refills after a
+-- short pause. An action needs some stamina left (above 0), as in Souls games, so the
+-- last swing of a bar can overdraw it to 0.
+Balance.Stamina = {
+	Max = 100,
+	Regen = 42, -- per second
+	RegenDelay = 0.75, -- seconds after spending before it refills
+	Attack = 14, -- per swing
+	Finisher = 22, -- the combo's last move
+	Dodge = 24,
+}
+
+-- Dodge roll (DodgeController / CombatService:Dodge). Circle on a PlayStation pad
+-- (ButtonB), Q or Left Ctrl on a keyboard, the roll button on touch. Rolls the way you
+-- are moving, or hops back when standing still. The i-frames are when enemy and boss
+-- hits miss you.
+Balance.Dodge = {
+	Distance = 17, -- studs a roll covers
+	BackstepDistance = 8,
+	Duration = 0.55, -- seconds
+	IFrameStart = 0.04,
+	IFrameEnd = 0.4,
+	Cooldown = 0.62, -- seconds from one dodge to the next
+}
+
+-- Enemies wind their attacks up for this long before the hit lands, long enough to read
+-- the swing and roll through it. The attack animation lasts EnemyAttackAnim seconds.
+Balance.EnemyWindup = 0.62
+Balance.EnemyAttackAnim = 1.0
 
 -- Movement
 -- Horde battles (one-man-army): every camp holds Count x EnemyDensity enemies, spread
 -- over Radius x CampSpread. Zones only fill while players are in them. Regular enemies
 -- have HordeHealth x the normal health, and at most MaxAttackers swing at one player at
 -- a time; the rest crowd round waiting for their turn.
-Balance.EnemyDensity = 10
-Balance.CampSpread = 2.2
+-- 2026-10-02: smaller packs (10x -> 4x) and 3 attackers at a time for the slower combat,
+-- with full XP and 1.5x Coins per kill so the level and shop pace stay about the same.
+Balance.EnemyDensity = 4
+Balance.CampSpread = 2
 Balance.HordeHealth = 0.6
-Balance.MaxAttackers = 5
-Balance.XPMultiplier = 0.5 -- XP per kill (halved with the 10x density)
+Balance.MaxAttackers = 3
+Balance.XPMultiplier = 1 -- XP per kill
+Balance.CoinRewardMultiplier = 1.5 -- Coins per kill (prices still use EnemyCoins)
 
 Balance.BaseWalkSpeed = 26
 Balance.SprintMultiplier = 1.4 -- hold Shift (always on for touch screens)

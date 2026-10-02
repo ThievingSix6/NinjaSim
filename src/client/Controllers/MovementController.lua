@@ -7,6 +7,9 @@
 
 	Double jump: jump again in the air (Balance.ExtraJumps times) for a flip, a
 	burst ring and a whoosh. The jumps come back on landing.
+
+	While a swing plays the walk speed drops to Balance.SwingMoveSpeed x (Souls-style
+	commitment); dodging is DodgeController's.
 ]]
 
 local Players = game:GetService("Players")
@@ -117,6 +120,9 @@ function MovementController:Start(c)
 		end
 		local sprinting = isSprinting()
 		local target = stats.WalkSpeed * (if sprinting then Balance.SprintMultiplier else 1)
+		if c.CombatController:IsAttacking() then
+			target *= Balance.SwingMoveSpeed -- committed to the swing: no running while it plays
+		end
 		if math.abs(humanoid.WalkSpeed - target) > 0.01 and humanoid.WalkSpeed > 0 then
 			humanoid.WalkSpeed = target
 		end

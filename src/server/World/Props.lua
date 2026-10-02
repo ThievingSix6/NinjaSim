@@ -832,4 +832,251 @@ function Props.Sign(parent: Instance, cf: CFrame, title: string, subtitle: strin
 	return m
 end
 
+-- ---------------------------------------------------------------- Kyoto (village, 2026-10-02)
+
+-- A cylinder from `a` reaching `length` studs along `dir` (limbs, branches, ropes).
+-- Built from axes rather than CFrame.lookAt, which is degenerate for upright limbs.
+local function limb(parent: Instance, a: Vector3, dir: Vector3, length: number, thickness: number, color: Color3, material: Enum.Material?): BasePart
+	local x = dir.Unit
+	local ref = if math.abs(x.Y) > 0.9 then Vector3.new(1, 0, 0) else Vector3.new(0, 1, 0)
+	local z = x:Cross(ref).Unit
+	local y = z:Cross(x).Unit
+	return part(parent, Vector3.new(length, thickness, thickness), CFrame.fromMatrix(a + x * (length / 2), x, y, z), color, material or Enum.Material.Wood, Enum.PartType.Cylinder)
+end
+
+local BLOSSOM = { rgb(255, 183, 197), rgb(255, 205, 215), rgb(248, 160, 186), rgb(255, 226, 234), rgb(240, 150, 175) }
+
+-- Cherry tree (sakura) in full bloom: a leaning trunk forking into three limbs, a
+-- cloud of pink blossom clusters and a carpet of fallen petals (about 13 parts).
+-- opts: Height, Rng, Petals (falling petals), Weeping (hanging branches, shidare-zakura).
+function Props.CherryTree(parent: Instance, cf: CFrame, opts: any?)
+	opts = opts or {}
+	local rng = opts.Rng or Random.new()
+	local h = opts.Height or rng:NextNumber(12, 17)
+	local m = model(parent, "CherryTree")
+	local bark = rgb(78, 52, 46):Lerp(rgb(60, 42, 40), rng:NextNumber())
+	local lean = CFrame.Angles(rng:NextNumber(-0.12, 0.12), 0, rng:NextNumber(-0.12, 0.12))
+	local trunkLen = h * 0.48
+	local base = cf.Position
+	local up = (cf.Rotation * lean).UpVector
+	limb(m, base - up * 0.5, up, trunkLen + 0.5, 1.9, bark)
+	local fork = base + up * trunkLen
+	local spin = rng:NextNumber(0, math.pi * 2)
+	local tips = { fork + up * (h * 0.3) }
+	for i = 1, 3 do
+		local yawA = spin + i * math.pi * 2 / 3 + rng:NextNumber(-0.4, 0.4)
+		local tilt = rng:NextNumber(0.6, 0.95)
+		local dir = Vector3.new(math.cos(yawA) * math.sin(tilt), math.cos(tilt), math.sin(yawA) * math.sin(tilt))
+		local len = h * rng:NextNumber(0.36, 0.48)
+		limb(m, fork, dir, len, 1.05, bark)
+		table.insert(tips, fork + dir * len)
+	end
+	for i, tip in ipairs(tips) do
+		for k = 1, if i == 1 then 1 else 2 do
+			local r = rng:NextNumber(5.5, 8) * h / 14
+			local p = tip + Vector3.new(rng:NextNumber(-2, 2), rng:NextNumber(-0.5, 1.8) + (k - 1) * 1.2, rng:NextNumber(-2, 2))
+			local ball = part(m, Vector3.one * r, CFrame.new(p), BLOSSOM[rng:NextInteger(1, #BLOSSOM)], Enum.Material.Grass, Enum.PartType.Ball)
+			foliage(ball)
+			ball.CastShadow = true
+		end
+	end
+	if opts.Weeping then
+		for i = 1, 8 do
+			local a = i * math.pi / 4 + rng:NextNumber(-0.2, 0.2)
+			local len = rng:NextNumber(4, 7)
+			local top = fork + up * (h * 0.32) + Vector3.new(math.cos(a), 0, math.sin(a)) * rng:NextNumber(3.5, 5.5)
+			foliage(part(m, Vector3.new(0.6, len, 1.6), CFrame.new(top - Vector3.new(0, len / 2, 0)) * CFrame.Angles(0, a, 0), BLOSSOM[rng:NextInteger(1, #BLOSSOM)], Enum.Material.Grass))
+		end
+	end
+	local carpet = foliage(part(m, Vector3.new(0.12, h * 1.2, h * 1.2), cf * CFrame.new(0, 0.12, 0) * UP, rgb(255, 196, 210), Enum.Material.SmoothPlastic, Enum.PartType.Cylinder))
+	carpet.Transparency = 0.35
+	if opts.Petals then
+		local emitter = foliage(part(m, Vector3.new(10, 1, 10), CFrame.new(fork + up * (h * 0.3)), Color3.new()))
+		emitter.Transparency = 1
+		Particles.Create("Petals", emitter, { Rate = 3 })
+	end
+	return m
+end
+
+-- Japanese cedar (sugi): a straight red-brown trunk under a tall narrow tiered crown.
+-- `cheap` (distant forest): no collisions or shadows. About 5 parts.
+function Props.Cedar(parent: Instance, cf: CFrame, rng: Random, height: number?, cheap: boolean?)
+	local m = model(parent, "Cedar")
+	local h = height or rng:NextNumber(22, 34)
+	local green = rgb(42, 82, 48):Lerp(rgb(62, 104, 58), rng:NextNumber())
+	-- the trunk stops inside the crown; the tiers narrow to a point at the top
+	local trunk = part(m, Vector3.new(h * 0.8, 1.5, 1.5), cf * CFrame.new(0, h * 0.4 - 0.5, 0) * UP, rgb(112, 68, 48), Enum.Material.Wood, Enum.PartType.Cylinder)
+	local tiers = 4
+	for i = 1, tiers do
+		local k = (i - 1) / (tiers - 1)
+		local width = (8.5 - 6 * k) * h / 28
+		local thick = h * 0.22
+		local tier = foliage(part(m, Vector3.new(thick, width, width), cf * CFrame.new(0, h * (0.33 + 0.19 * k) + thick / 2, 0) * UP, green:Lerp(Color3.new(0, 0, 0), k * 0.08), Enum.Material.Grass, Enum.PartType.Cylinder))
+		tier.CastShadow = not cheap
+	end
+	local tip = foliage(part(m, Vector3.one * (2.6 * h / 28), cf * CFrame.new(0, h * 0.75, 0), green:Lerp(Color3.new(0, 0, 0), 0.1), Enum.Material.Grass, Enum.PartType.Ball))
+	tip.CastShadow = false
+	if cheap then
+		foliage(trunk)
+	end
+	return m
+end
+
+-- A broadleaf forest tree (a trunk and a few leaf balls), cheap enough to plant by the
+-- hundred. Leaf picks the canopy colour (green, maple red, autumn gold).
+function Props.ForestTree(parent: Instance, cf: CFrame, rng: Random, leaf: Color3, height: number?, cheap: boolean?)
+	local m = model(parent, "ForestTree")
+	local h = height or rng:NextNumber(13, 20)
+	local trunk = part(m, Vector3.new(h, 1.5, 1.5), cf * CFrame.new(0, h / 2 - 0.5, 0) * UP, rgb(92, 66, 48), Enum.Material.Wood, Enum.PartType.Cylinder)
+	if cheap then
+		foliage(trunk)
+	end
+	for _ = 1, 3 do
+		local r = rng:NextNumber(6, 9) * h / 16
+		local ball = foliage(part(m, Vector3.one * r, cf * CFrame.new(rng:NextNumber(-2.5, 2.5), h + rng:NextNumber(-1.5, 2), rng:NextNumber(-2.5, 2.5)), tint(leaf, rng, 0.12), Enum.Material.Grass, Enum.PartType.Ball))
+		ball.CastShadow = not cheap
+	end
+	return m
+end
+
+-- Garden pine (matsu): a leaning trunk with flat cloud-pruned pads of needles.
+function Props.GardenPine(parent: Instance, cf: CFrame, rng: Random, height: number?)
+	local m = model(parent, "GardenPine")
+	local h = height or rng:NextNumber(8, 12)
+	local lean = CFrame.Angles(rng:NextNumber(-0.25, 0.25), rng:NextNumber(0, 6), rng:NextNumber(0.15, 0.3))
+	local up = (cf.Rotation * lean).UpVector
+	limb(m, cf.Position - up * 0.5, up, h + 0.5, 1.3, rgb(85, 62, 50))
+	for i = 1, 4 do
+		local y = h * (0.45 + 0.18 * i)
+		local side = Vector3.new(rng:NextNumber(-3, 3), 0, rng:NextNumber(-3, 3))
+		local w = rng:NextNumber(5, 8) * (1.15 - i * 0.12)
+		foliage(part(m, Vector3.new(1.4, w, w), CFrame.new(cf.Position + up * math.min(y, h) + side) * UP, rgb(48, 90, 52):Lerp(rgb(70, 110, 60), rng:NextNumber()), Enum.Material.Grass, Enum.PartType.Cylinder))
+	end
+	return m
+end
+
+-- Weeping willow (yanagi) for the canal banks.
+function Props.Willow(parent: Instance, cf: CFrame, rng: Random)
+	local m = model(parent, "Willow")
+	local h = rng:NextNumber(10, 13)
+	part(m, Vector3.new(h, 1.6, 1.6), cf * CFrame.new(0, h / 2 - 0.5, 0) * UP, rgb(90, 75, 55), Enum.Material.Wood, Enum.PartType.Cylinder)
+	local green = rgb(150, 190, 90)
+	foliage(part(m, Vector3.one * 8, cf * CFrame.new(0, h + 1, 0), green, Enum.Material.Grass, Enum.PartType.Ball))
+	for i = 1, 8 do
+		local a = i * math.pi / 4 + rng:NextNumber(-0.2, 0.2)
+		local len = rng:NextNumber(6, 9)
+		local strand = foliage(part(m, Vector3.new(0.5, len, 2.2), cf * CFrame.Angles(0, a, 0) * CFrame.new(0, h + 1.5 - len / 2, -3.8), tint(green, rng, 0.12), Enum.Material.Grass))
+		strand.Transparency = 0.15
+	end
+	return m
+end
+
+-- Machiya: a Kyoto wooden townhouse facing the street (-Z). Dark wood ground floor
+-- with a koshi lattice front, a noren curtain over the door and a red lantern; a
+-- white plastered upper floor with slatted windows; a tiled roof running along the street.
+function Props.Machiya(parent: Instance, cf: CFrame, opts: any?)
+	opts = opts or {}
+	local rng = opts.Rng or Random.new()
+	local m = model(parent, "Machiya")
+	local w, d = opts.Width or 11, opts.Depth or 13
+	local h1, h2 = 6.5, 4.6
+	local wood = rgb(72, 46, 32):Lerp(rgb(96, 62, 40), rng:NextNumber())
+	local plaster = rgb(236, 228, 212):Lerp(rgb(214, 196, 168), rng:NextNumber() * 0.6)
+	local roof = opts.Roof or rgb(58, 60, 68)
+	local front = -d / 2
+	part(m, Vector3.new(w + 0.4, 1.4, d + 0.4), cf * CFrame.new(0, 0.1, 0), rgb(120, 116, 110), Enum.Material.Slate)
+	part(m, Vector3.new(w, h1, d), cf * CFrame.new(0, 0.8 + h1 / 2, 0), wood, Enum.Material.Wood)
+	-- koshi lattice over the shop front (left 60%), door on the right
+	local latticeW = w * 0.58
+	local left = -w / 2 + 0.5
+	part(m, Vector3.new(latticeW, h1 - 1.6, 0.2), cf * CFrame.new(left + latticeW / 2, 0.8 + (h1 - 1.6) / 2 + 0.6, front - 0.05), rgb(245, 225, 170), Enum.Material.SmoothPlastic).Transparency = 0.2
+	for x = left + 0.3, left + latticeW - 0.2, 0.75 do
+		part(m, Vector3.new(0.22, h1 - 1.4, 0.3), cf * CFrame.new(x, 0.8 + (h1 - 1.4) / 2 + 0.5, front - 0.2), wood:Lerp(Color3.new(0, 0, 0), 0.25), Enum.Material.Wood)
+	end
+	local doorX = w / 2 - 0.5 - (w - latticeW - 1) / 2
+	part(m, Vector3.new(2.6, 4.6, 0.2), cf * CFrame.new(doorX, 0.8 + 2.3, front - 0.05), rgb(30, 22, 18), Enum.Material.Wood)
+	local noren = opts.Noren or ({ rgb(40, 52, 110), rgb(150, 36, 36), rgb(60, 90, 70), rgb(230, 225, 210) })[rng:NextInteger(1, 4)]
+	for i = -1, 1 do
+		part(m, Vector3.new(0.85, 1.9, 0.08), cf * CFrame.new(doorX + i * 0.9, 0.8 + 4.1, front - 0.35), noren, Enum.Material.Fabric)
+	end
+	-- hisashi: a little tiled roof over the ground floor (slopes down toward the street)
+	wedge(m, Vector3.new(w + 0.4, 1, 2.4), cf * CFrame.new(0, 0.8 + h1 + 0.2, front - 1.1), roof, Enum.Material.Slate)
+	-- upper floor, set back, with slatted mushiko windows
+	part(m, Vector3.new(w - 0.2, h2, d - 1.6), cf * CFrame.new(0, 0.8 + h1 + h2 / 2, 0.8), plaster, Enum.Material.Plaster)
+	for sx = -1, 1, 2 do
+		part(m, Vector3.new(w * 0.3, 1.5, 0.2), cf * CFrame.new(sx * w * 0.22, 0.8 + h1 + h2 * 0.55, front + 0.75), rgb(52, 42, 36), Enum.Material.Wood)
+	end
+	Props.Roof(m, cf * CFrame.new(0, 0.8 + h1 + h2, 0.6), w + 1.2, d + 1.2, 3.2, roof, roof:Lerp(Color3.new(0, 0, 0), 0.35))
+	if opts.Lantern ~= false then
+		local lamp = part(m, Vector3.one * 1.5, cf * CFrame.new(doorX + 2, 0.8 + h1 - 1.4, front - 1.2), if rng:NextNumber() < 0.7 then rgb(225, 50, 40) else rgb(250, 240, 220), Enum.Material.Neon, Enum.PartType.Ball)
+		lamp.CanCollide = false
+		if opts.Light then
+			light(lamp, rgb(255, 150, 100), 12, 1)
+		end
+	end
+	return m
+end
+
+-- A string of paper lanterns hung across a street from `a` to `b` (1 rope + lanterns, no lights).
+function Props.LanternLine(parent: Instance, a: Vector3, b: Vector3, rng: Random)
+	local m = model(parent, "LanternLine")
+	local dir = b - a
+	local len = dir.Magnitude
+	foliage(limb(m, a, dir.Unit, len, 0.15, rgb(40, 30, 25), Enum.Material.Fabric))
+	local n = math.max(2, math.floor(len / 3.2))
+	for i = 1, n - 1 do
+		local t = i / n
+		local sag = math.sin(t * math.pi) * 1.4
+		foliage(part(m, Vector3.one * 0.85, CFrame.new(a + dir * t - Vector3.new(0, sag + 0.6, 0)), if (i + rng:NextInteger(0, 1)) % 2 == 0 then rgb(230, 55, 45) else rgb(255, 240, 215), Enum.Material.Neon, Enum.PartType.Ball))
+	end
+	return m
+end
+
+-- Kinkaku-ji: the golden pavilion, front (-Z) facing its pond.
+function Props.GoldenPavilion(parent: Instance, cf: CFrame)
+	local m = model(parent, "GoldenPavilion")
+	local gold, dark, wood = rgb(232, 190, 70), rgb(58, 48, 42), rgb(150, 112, 78)
+	part(m, Vector3.new(20, 2, 17), cf * CFrame.new(0, 0.5, 0), rgb(130, 126, 118), Enum.Material.Slate)
+	-- ground floor: natural wood and white shoji, open veranda
+	part(m, Vector3.new(17, 0.6, 14), cf * CFrame.new(0, 1.8, 0), wood, Enum.Material.WoodPlanks)
+	part(m, Vector3.new(13, 6, 10), cf * CFrame.new(0, 5.1, 0.5), rgb(240, 236, 222), Enum.Material.SmoothPlastic)
+	for sx = -1, 1 do
+		for sz = -1, 1, 2 do
+			part(m, Vector3.new(0.7, 6.4, 0.7), cf * CFrame.new(sx * 8, 5.1, sz * 6.6), wood, Enum.Material.Wood)
+		end
+	end
+	part(m, Vector3.new(19, 0.8, 16), cf * CFrame.new(0, 8.6, 0), dark, Enum.Material.Slate)
+	-- second floor: gold leaf, with a balcony rail
+	part(m, Vector3.new(13, 5.4, 10.5), cf * CFrame.new(0, 11.7, 0), gold, Enum.Material.Foil)
+	part(m, Vector3.new(15, 0.4, 12.5), cf * CFrame.new(0, 9.3, 0), gold, Enum.Material.Foil)
+	part(m, Vector3.new(15, 0.3, 0.3), cf * CFrame.new(0, 10.6, -6.2), gold, Enum.Material.Foil)
+	part(m, Vector3.new(17.5, 0.8, 14.5), cf * CFrame.new(0, 14.8, 0), dark, Enum.Material.Slate)
+	-- top floor: gold, under a hipped roof crowned by a golden phoenix
+	part(m, Vector3.new(8.5, 5, 7.5), cf * CFrame.new(0, 17.7, 0), gold, Enum.Material.Foil)
+	Props.Roof(m, cf * CFrame.new(0, 20.2, 0), 11.5, 10.5, 3.6, dark, gold)
+	part(m, Vector3.new(0.8, 1.2, 1.6), cf * CFrame.new(0, 24.6, 0), gold, Enum.Material.Foil)
+	for sx = -1, 1, 2 do
+		wedge(m, Vector3.new(0.3, 1.3, 1.8), cf * CFrame.new(sx * 0.6, 25.1, 0.2) * CFrame.Angles(0, 0, sx * 0.6), gold, Enum.Material.Foil)
+	end
+	return m
+end
+
+-- Inari fox guardian (kitsune) on a pedestal, with a red bib. `mirror` turns its head the other way.
+function Props.FoxStatue(parent: Instance, cf: CFrame, mirror: boolean?)
+	local m = model(parent, "FoxStatue")
+	local stone = rgb(226, 222, 210)
+	local turn = if mirror then -0.35 else 0.35
+	part(m, Vector3.new(3.2, 3.2, 3.2), cf * CFrame.new(0, 1.6, 0), rgb(120, 118, 112), Enum.Material.Slate)
+	part(m, Vector3.one * 2.8, cf * CFrame.new(0, 4.4, 0.2), stone, Enum.Material.Limestone, Enum.PartType.Ball)
+	local head = cf * CFrame.new(0, 6.3, -0.3) * CFrame.Angles(0, turn, 0)
+	part(m, Vector3.one * 1.8, head, stone, Enum.Material.Limestone, Enum.PartType.Ball)
+	part(m, Vector3.new(0.7, 0.7, 1.4), head * CFrame.new(0, -0.2, -1), stone, Enum.Material.Limestone)
+	for sx = -1, 1, 2 do
+		wedge(m, Vector3.new(0.35, 1.2, 0.6), head * CFrame.new(sx * 0.5, 1.1, 0.1), stone, Enum.Material.Limestone)
+	end
+	wedge(m, Vector3.new(1.8, 1.1, 0.9), cf * CFrame.new(0, 5, -0.9) * CFrame.Angles(math.pi, 0, 0), rgb(200, 40, 30), Enum.Material.Fabric)
+	limb(m, cf * Vector3.new(0, 3.6, 1.2), (cf.Rotation * Vector3.new(0.2, 1, 0.6)).Unit, 3.4, 1, stone, Enum.Material.Limestone)
+	return m
+end
+
 return Props

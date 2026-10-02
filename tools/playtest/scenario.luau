@@ -1,5 +1,6 @@
 --!nocheck
 local task = require("@lune/task")
+local process = require("@lune/process")
 
 return function(E)
 	local roblox = E.roblox
@@ -11,6 +12,24 @@ return function(E)
 	local steps = {}
 	local function step(name, fn)
 		table.insert(steps, { name, fn })
+	end
+
+	-- Every step starts rested: the last swing has played out and both the server's
+	-- and the client's stamina pools are full, so one step's combo can't starve the next.
+	local function freshStamina()
+		local CC = E.cm("Controllers.CombatController")
+		local CS = E.sm("CombatService")
+		if not CC or not CS then
+			return
+		end
+		for _ = 1, 40 do
+			if not CC:IsAttacking() then
+				break
+			end
+			task.wait(0.05)
+		end
+		CS:RefillStamina(player)
+		E.shared("Util.Stamina").Refill(CC.Stamina, os.clock())
 	end
 
 	step("boot", function()
@@ -241,6 +260,10 @@ return function(E)
 		if not free then
 			report("scenario", "no swinging stick on the nunchucks")
 		end
+		-- the sticks only simulate near the camera; welds don't carry the weapon to the player here
+		E.CameraFocus = function()
+			return weapon.PrimaryPart and weapon.PrimaryPart.Position
+		end
 		local root = player.Character.HumanoidRootPart
 		local target
 		for _, m in ipairs(E.CS:GetTagged("Enemy")) do
@@ -288,6 +311,7 @@ return function(E)
 		for i = 2, #positions do
 			moved = math.max(moved, (positions[i] - positions[i - 1]).Magnitude)
 		end
+		E.CameraFocus = nil
 		print("free stick max step", moved)
 		if free and moved < 0.2 then
 			report("scenario", "the free nunchuck stick never moved")
@@ -325,6 +349,12 @@ return function(E)
 			local p = target.PrimaryPart.Position
 			E.sm("ZoneService"):MarkTeleported(player)
 			root.CFrame = CFrame.lookAt(p + Vector3.new(0, 0, Balance.AttackRange + 3), p)
+			-- hold the target still (stunned) so the thrusts are measured at range, not after it charges in
+			for _, e in pairs(E.sm("EnemyService").All) do
+				if e.Model == target then
+					e.StunUntil = os.clock() + 30
+				end
+			end
 		end
 		-- log every hit the server lands, with its distance from the player
 		local ES = E.sm("EnemyService")
@@ -569,6 +599,118 @@ return function(E)
 		assert(table.find(moves, 4) and table.find(knocks, 2.2), "the combo never reached its finisher")
 		print("after combat: level", data.Level, "xp", data.XP, "coins", data.Coins, "kills", data.Lifetime.Kills)
 		assert(data.Lifetime.Kills > 0, "no kills registered")
+	end)
+
+	step("stamina + dodge", function()
+		local UIS = E.wrap(E.rgame:GetService("UserInputService"))
+		local K = E.roblox.Enum.KeyCode
+		local CC = E.cm("Controllers.CombatController")
+		local DodgeC = E.cm("Controllers.DodgeController")
+		local MM = E.cm("UI.MenuManager")
+		local CS = E.sm("CombatService")
+		local ES = E.sm("EnemyService")
+		local Balance = E.shared("Config.Balance")
+		local humanoid = player.Character:FindFirstChildOfClass("Humanoid")
+		local root = player.Character.HumanoidRootPart
+		-- a swing spends stamina on both sides
+		CC:Swing()
+		task.wait(0.1)
+		local client, server = CC:GetStamina(), CS:GetStamina(player)
+		print(string.format("stamina after one swing: client %.0f server %.0f (cost %d)", client, server, Balance.Stamina.Attack))
+		if client > Balance.Stamina.Max - Balance.Stamina.Attack + 1 or server > Balance.Stamina.Max - Balance.Stamina.Attack + 1 then
+			report("scenario", "a swing did not spend stamina")
+		end
+		print("walking slowly while the swing plays:", CC:IsAttacking(), humanoid.WalkSpeed)
+		task.wait(1.2)
+		E.shared("Util.Stamina").Refill(CC.Stamina, os.clock())
+		CS:RefillStamina(player)
+		-- Circle (ButtonB) rolls when no menu is open
+		local circle = { UserInputType = E.roblox.Enum.UserInputType.Gamepad1, KeyCode = K.ButtonB, Position = Vector3.new() }
+		E.signalFor(humanoid, "StateChanged"):Fire(E.roblox.Enum.HumanoidStateType.Jumping, E.roblox.Enum.HumanoidStateType.Landed)
+		E.signalFor(UIS, "InputBegan"):Fire(circle, false)
+		task.wait(0.1)
+		local rolling = DodgeC:IsDodging()
+		local velocity = root:FindFirstChild("DodgeVelocity")
+		local invulnerable = CS:IsInvulnerable(player)
+		print("circle press: dodging", rolling, "velocity", velocity ~= nil, "server i-frames", invulnerable, "stamina", math.floor(CC:GetStamina()))
+		if not rolling or not velocity then
+			report("scenario", "Circle did not start a dodge roll")
+		end
+		if not invulnerable then
+			report("scenario", "the server opened no i-frames for the dodge")
+		end
+		task.wait(Balance.Dodge.Duration + 0.2)
+		print("after the roll: dodging", DodgeC:IsDodging(), "velocity left", root:FindFirstChild("DodgeVelocity") ~= nil, "i-frames", CS:IsInvulnerable(player))
+		if DodgeC:IsDodging() or root:FindFirstChild("DodgeVelocity") or CS:IsInvulnerable(player) then
+			report("scenario", "the dodge did not end")
+		end
+		-- Circle with a menu open only closes the menu
+		task.wait(Balance.Dodge.Cooldown)
+		MM:Open("Shop")
+		task.wait(0.4)
+		E.signalFor(UIS, "InputBegan"):Fire(circle, false)
+		task.wait(0.1)
+		print("circle with the shop open: menu open", MM:IsOpen(), "dodging", DodgeC:IsDodging())
+		if MM:IsOpen() or DodgeC:IsDodging() then
+			report("scenario", "Circle should close the menu without rolling")
+		end
+		task.wait(0.5)
+		-- no stamina, no roll
+		E.shared("Util.Stamina").Spend(CC.Stamina, os.clock(), 1000)
+		print("roll with an empty bar:", DodgeC:Dodge())
+		if DodgeC:IsDodging() then
+			report("scenario", "rolled with no stamina")
+		end
+		task.wait(1.5)
+		E.shared("Util.Stamina").Refill(CC.Stamina, os.clock())
+		CS:RefillStamina(player)
+		-- an enemy swing lands after its windup unless a roll's i-frames cover it
+		local enemy
+		for _, e in pairs(ES.All) do
+			if not e.Dead and not e.IsBoss and not e.Def.Static and e.Humanoid then
+				enemy = e
+				break
+			end
+		end
+		if not enemy then
+			report("scenario", "no enemy to test the dodge against")
+			return
+		end
+		local function standByEnemy()
+			E.sm("ZoneService"):MarkTeleported(player)
+			local p = enemy.Root.Position
+			root.CFrame = CFrame.lookAt(p + Vector3.new(0, 0, 3), p)
+		end
+		humanoid.Health = humanoid.MaxHealth
+		standByEnemy()
+		enemy.StunUntil = 0
+		ES:EnemyAttack(enemy, player)
+		task.wait(Balance.EnemyWindup * 0.5)
+		local early = humanoid.Health
+		task.wait(Balance.EnemyWindup * 0.5 + 0.25)
+		print(string.format("enemy swing: hp %.0f during windup, %.0f after it lands (max %.0f)", early, humanoid.Health, humanoid.MaxHealth))
+		if early < humanoid.MaxHealth then
+			report("scenario", "the enemy hit landed before its windup")
+		elseif humanoid.Health >= humanoid.MaxHealth then
+			report("scenario", "the enemy swing never landed")
+		end
+		task.wait(Balance.Dodge.Cooldown)
+		humanoid.Health = humanoid.MaxHealth
+		standByEnemy()
+		enemy.StunUntil = 0
+		local evaded = 0
+		local conn = E.C["ReplicatedStorage.Shared.Net"].Event("Evaded").OnClientEvent:Connect(function()
+			evaded += 1
+		end)
+		ES:EnemyAttack(enemy, player)
+		task.wait(Balance.EnemyWindup - 0.2)
+		print("rolling into the swing:", DodgeC:Dodge())
+		task.wait(0.5)
+		conn:Disconnect()
+		print("hp after rolling through it", humanoid.Health, "/", humanoid.MaxHealth, "evaded", evaded)
+		if humanoid.Health < humanoid.MaxHealth then
+			report("scenario", "the dodge's i-frames did not stop the enemy hit")
+		end
 	end)
 
 	step("ragdolls", function()
@@ -1845,8 +1987,17 @@ return function(E)
 		print("BindToClose ran", #E.bindToClose)
 	end)
 
+	-- ONLY=spear,combat runs just those steps (boot always runs)
+	local only = {}
+	for name in string.gmatch(process.env.ONLY or "", "[^,]+") do
+		only[name] = true
+	end
 	for _, s in ipairs(steps) do
+		if next(only) and s[1] ~= "boot" and not only[s[1]] then
+			continue
+		end
 		print("\27[36m== " .. s[1] .. " ==\27[0m")
+		freshStamina()
 		local ok, err = xpcall(s[2], E.tb)
 		if not ok then
 			report("STEP " .. s[1], err)

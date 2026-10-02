@@ -22,6 +22,7 @@ local CollectionService = game:GetService("CollectionService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
+local Balance = require(ReplicatedStorage.Shared.Config.Balance)
 local Combo = require(ReplicatedStorage.Shared.Config.Combo)
 local Pose = require(ReplicatedStorage.Shared.Util.Pose)
 
@@ -710,7 +711,7 @@ local function stepEnemies(dt: number)
 		end
 		local m = s.Motors
 		local hit = math.max(0, 1 - (now - s.HitStart) / 0.25)
-		local attackT = (now - s.AttackStart) / 0.55
+		local attackT = (now - s.AttackStart) / Balance.EnemyAttackAnim
 
 		if s.Anchored then
 			-- training dummy wobble
@@ -739,11 +740,12 @@ local function stepEnemies(dt: number)
 
 		if s.IsWisp then
 			setT(m.Waist, waist * CFrame.new(0, math.sin(now * 2.2 + s.Seed) * 0.5, 0))
-			local reach = if attackT < 1 then math.sin(attackT * math.pi) * 2.2 else 0
+			local reach = if attackT < 1 then math.sin(attackT ^ 1.3 * math.pi) * 2.2 else 0
 			setT(m.RightShoulder, CFrame.new(math.sin(now * 3) * 0.2, math.cos(now * 3) * 0.3, -reach))
 			setT(m.LeftShoulder, CFrame.new(-math.sin(now * 3) * 0.2, -math.cos(now * 3) * 0.3, -reach))
 		elseif s.IsBeast then
-			local lunge = if attackT < 1 then math.sin(attackT * math.pi) else 0
+			-- lunge peaks with the server's hit (attackT ^ 1.3 puts the peak at ~0.59)
+			local lunge = if attackT < 1 then math.sin(attackT ^ 1.3 * math.pi) else 0
 			setT(m.Waist, waist * CFrame.new(0, 0, -lunge * 1.2) * CFrame.Angles(-lunge * 0.3, 0, 0))
 			setT(m.FrontRight, CFrame.Angles(swing, 0, 0))
 			setT(m.BackLeft, CFrame.Angles(swing, 0, 0))
@@ -759,16 +761,19 @@ local function stepEnemies(dt: number)
 			local leftPitch = swing * 0.7
 			local twist, lean, crouch = 0, 0, 0
 			if attackT < 1 then
-				-- wind up: weapon raised high behind the shoulder, body coiled back;
-				-- strike (lands with the server's hit ~0.35s in): a diagonal chop down
-				-- and across, body twisting and leaning into it; then recover
+				-- wind up: weapon raised high behind the shoulder, body coiled back and
+				-- held a beat so the player can read it; strike (lands with the server's
+				-- hit, Balance.EnemyWindup in): a diagonal chop down and across, body
+				-- twisting and leaning into it; then recover
 				local p
-				if attackT < 0.5 then
-					p = lerpPose(ENEMY_REST, ENEMY_WINDUP, easeOut(attackT / 0.5))
-				elseif attackT < 0.68 then
-					p = lerpPose(ENEMY_WINDUP, ENEMY_STRIKE, 1 - (1 - (attackT - 0.5) / 0.18) ^ 3)
+				local strikeStart = (Balance.EnemyWindup - 0.12) / Balance.EnemyAttackAnim
+				local strikeEnd = (Balance.EnemyWindup + 0.04) / Balance.EnemyAttackAnim
+				if attackT < strikeStart then
+					p = lerpPose(ENEMY_REST, ENEMY_WINDUP, easeOut(math.min(1, attackT / (strikeStart * 0.7))))
+				elseif attackT < strikeEnd then
+					p = lerpPose(ENEMY_WINDUP, ENEMY_STRIKE, 1 - (1 - (attackT - strikeStart) / (strikeEnd - strikeStart)) ^ 3)
 				else
-					p = lerpPose(ENEMY_STRIKE, ENEMY_REST, easeOut((attackT - 0.68) / 0.32))
+					p = lerpPose(ENEMY_STRIKE, ENEMY_REST, easeOut((attackT - strikeEnd) / (1 - strikeEnd)))
 				end
 				right = CFrame.Angles(p.Pitch, 0, 0) * CFrame.Angles(0, 0, p.Roll)
 				twist, lean, crouch = p.Twist, p.Lean, p.Crouch

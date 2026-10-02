@@ -16,7 +16,8 @@
 	  Hills        {x, z, radius, height} rounded lookout rises
 	  Open         {x, z, radius} extra open ground (widens the valley)
 	  Ponds        {x, z, radius, depth, waterHeight}
-	  Box          {x, z, halfX, halfZ, cornerRadius} a squarish valley (the village)
+	  Box          {x, z, halfX, halfZ, cornerRadius} a squarish valley (unused since the
+	               village became a full valley)
 	  Roll         size of the rolling swells; Scale multiplies every height
 	  CliffHeight / CliffWidth / EdgeNoise  the ridge around the valley
 	  Alt          second ground material for patches (must be a terrain material)
@@ -114,20 +115,44 @@ local C = {
 local M = Enum.Material
 
 return {
-	-- The starting village keeps its flat square; a short winding pass leads to the first gate.
+	-- The starting area (2026-10-02): a Kyoto-style valley as big as the others. Spawn
+	-- plaza and the machiya street (Gion) in the west, the Yasaka pagoda and the
+	-- Kiyomizu stage on the south hills, the golden pavilion's pond to the north, and a
+	-- tunnel of torii (Fushimi Inari) climbing to the boss shrine in the north-east.
+	-- Forested hills all round (ZoneDecor.Village).
 	village = {
-		Spawn = -130,
-		Egg = v2(-105, -38),
-		Board = v2(-110, 36),
-		Boss = v2(70, 105),
-		Box = { 0, 0, 160, 160, 26 },
-		Road = { { -170, 0, 0 }, { 150, 0, 0 }, { 196, 12, 2 }, { 240, -6, 2 }, { 280, 0, 0 } },
-		Open = { { 214, 2, 30 } },
-		Ponds = { { -35, 118, 17, 4.5, 0 } },
-		Roll = 0,
-		EdgeNoise = 7,
-		CliffHeight = 38,
-		CliffWidth = 24,
+		Spawn = -215,
+		Egg = v2(-172, -50),
+		Board = v2(-205, 50),
+		Road = {
+			{ -280, 0, 0 }, { -215, 0, 0 }, { -150, 0, 0 }, { -70, 0, 0 }, { -25, 14, 1 }, { 25, 22, 2 }, { 75, 8, 3 },
+			{ 120, -12, 4 }, { 165, -22, 4 }, { 210, -8, 2 }, { 248, 0, 0 }, { 280, 0, 0 },
+		},
+		Roads = {
+			-- the Senbon Torii path to the shrine (ZoneDecor lines it with torii)
+			{ { 75, 8 }, { 85, 55, 8 }, { 110, 95, 15 }, { 140, 128, 22 }, { 165, 150, 26 } },
+			-- Ninenzaka / Sannenzaka: the stone lane up past the pagoda to the Kiyomizu stage
+			{ { -70, 0 }, { -66, -50, 3 }, { -60, -100, 9 }, { -48, -128, 13 }, { -15, -150, 16 }, { 12, -170, 20 } },
+		},
+		CampHeights = { 0, 4, 8 },
+		Boss = v2(165, 150),
+		BossHeight = 26,
+		Plateaus = { { 165, 150, 60, 26, 34 }, { 95, -110, 52, 8, 26 }, { -15, 105, 50, 4, 24 } },
+		Hills = {
+			{ -55, -165, 42, 16 }, -- Yasaka pagoda
+			{ 25, -205, 46, 22 }, -- Kiyomizu stage
+			{ -200, -170, 40, 14 }, { -120, 185, 38, 14 }, { 35, 205, 40, 16 }, { 235, -200, 34, 12 }, { 235, 175, 30, 12 },
+		},
+		Open = {
+			{ -175, -110, 50 }, { -165, 125, 52 }, { 25, -55, 48 }, { 210, 70, 45 }, { -60, 190, 42 },
+			{ -55, -150, 50 }, { 25, -170, 48 }, { 205, -120, 42 }, { 140, -175, 40 }, { -230, 110, 36 },
+			{ -230, -110, 36 }, { -115, 35, 42 }, { -110, -30, 40 }, { -165, 60, 40 }, { 60, 150, 40 },
+		},
+		Ponds = { { -160, 128, 30, 5, 0 } }, -- the golden pavilion's mirror pond
+		Roll = 3,
+		EdgeNoise = 10,
+		CliffHeight = 52,
+		CliffWidth = 34,
 		Alt = M.LeafyGrass,
 	},
 	bamboo = with(A, { Roll = 7, Alt = M.Grass }),

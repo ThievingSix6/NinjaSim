@@ -107,7 +107,7 @@ function EnemyService:Spawn(defId: string, level: number, zone, position: Vector
 		MaxHealth = maxHealth,
 		Damage = math.max(1, math.floor(Balance.EnemyDamage(level, def.DamageMod) * size + 0.5)),
 		XP = math.max(1, math.floor(Balance.EnemyXP(level, def.XPMod) * size + 0.5)),
-		Coins = Balance.EnemyCoins(level, def.CoinMod) * size,
+		Coins = Balance.EnemyCoins(level, def.CoinMod) * size * Balance.CoinRewardMultiplier,
 		Home = Vector3.new(position.X, ground, position.Z),
 		Slot = opts.Slot,
 		IsBoss = def.IsBoss == true,
@@ -425,7 +425,9 @@ end
 function EnemyService:EnemyAttack(enemy, player: Player)
 	enemy.LastAttack = os.clock()
 	enemy.Model:SetAttribute("AttackTick", (enemy.Model:GetAttribute("AttackTick") or 0) + 1)
-	task.delay(0.35, function()
+	-- the hit lands after a readable windup (Balance.EnemyWindup), in time with the
+	-- client's swing animation; a dodge's i-frames make it miss
+	task.delay(Balance.EnemyWindup, function()
 		if enemy.Dead or os.clock() < (enemy.StunUntil or 0) then
 			return -- a finisher or combo hit interrupted the swing
 		end
@@ -435,7 +437,7 @@ function EnemyService:EnemyAttack(enemy, player: Player)
 		end
 		if flatDistance(root.Position, enemy.Root.Position) <= enemy.Radius + 6.5 then
 			local humanoid = (player.Character :: Model):FindFirstChildOfClass("Humanoid")
-			if humanoid and not (player.Character :: Model):FindFirstChildOfClass("ForceField") then
+			if humanoid and not (player.Character :: Model):FindFirstChildOfClass("ForceField") and not services.CombatService:IsInvulnerable(player) then
 				humanoid:TakeDamage(enemy.Damage)
 				Net.Event("PlayerHurt"):FireClient(player, enemy.Damage, enemy.Root.Position)
 			end

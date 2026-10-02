@@ -53,6 +53,9 @@ local function hurt(player: Player, amount: number, from: Vector3, knock: number
 	if not humanoid or not root or humanoid.Health <= 0 or (character :: Model):FindFirstChildOfClass("ForceField") then
 		return
 	end
+	if services.CombatService:IsInvulnerable(player) then
+		return -- rolled through it
+	end
 	humanoid:TakeDamage(amount)
 	Net.Event("PlayerHurt"):FireClient(player, amount, from, true)
 	if knock and knock > 0 then

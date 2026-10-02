@@ -3,6 +3,10 @@
 	cadence against the player's real attack speed, tracks where the player is in
 	the weapon's combo (Config/Combo) itself, finds enemies in that move's reach
 	and arc (and Width lane for spear thrusts), computes damage/crits/combo bonus and applies it.
+
+	It also keeps each player's stamina (Util/Stamina): every swing and dodge spends it,
+	and the server refuses actions the pool can't cover. A dodge ("Dodge" event) opens
+	the i-frame window that EnemyService and BossService check with IsInvulnerable.
 ]]
 
 local Players = game:GetService("Players")
@@ -13,16 +17,21 @@ local Balance = require(Shared.Config.Balance)
 local Combo = require(Shared.Config.Combo)
 local Katanas = require(Shared.Config.Katanas)
 local Net = require(Shared.Net)
+local Stamina = require(Shared.Util.Stamina)
 
 local CombatService = {}
 
 local services
-local state: { [Player]: { LastSwing: number, Combo: number, LastHit: number, Burst: number, BurstStart: number, Strikes: number, Chain: number, Weapon: string? } } = {}
+local state: { [Player]: { LastSwing: number, Combo: number, LastHit: number, Burst: number, BurstStart: number, Strikes: number, Chain: number, Weapon: string?, Stamina: Stamina.Pool, LastDodge: number, IFrames: { number } } } = {}
+
+-- seconds of extra regen the server allows for network jitter between two actions
+local STAMINA_SLACK = 0.3
 
 local function getState(player: Player)
 	local s = state[player]
 	if not s then
-		s = { LastSwing = 0, Combo = 0, LastHit = 0, Burst = 0, BurstStart = 0, Strikes = 0, Chain = 0 }
+		local now = os.clock()
+		s = { LastSwing = 0, Combo = 0, LastHit = 0, Burst = 0, BurstStart = 0, Strikes = 0, Chain = 0, Stamina = Stamina.new(now), LastDodge = 0, IFrames = { 0, 0 } }
 		state[player] = s
 	end
 	return s
@@ -58,6 +67,9 @@ local function onAttack(player: Player, comboIndex: any)
 		end
 		return
 	end
+	if not Stamina.CanAct(s.Stamina, now, STAMINA_SLACK) then
+		return -- out of stamina: the client holds swings back too, so this is lag or a cheat
+	end
 	if now - s.BurstStart > 2 then
 		s.BurstStart = now
 		s.Burst = 0
@@ -72,6 +84,7 @@ local function onAttack(player: Player, comboIndex: any)
 	s.Chain = if continues and comboIndex ~= 1 then (s.Chain % #moves) + 1 else 1
 	s.LastSwing = now
 	local move = Combo.Get(s.Chain, weapon)
+	Stamina.Spend(s.Stamina, now, Stamina.MoveCost(move))
 
 	for _, other in ipairs(Players:GetPlayers()) do
 		if other ~= player then
@@ -145,6 +158,62 @@ local function onAttack(player: Player, comboIndex: any)
 	end
 end
 
+-- Dodge roll: checks cadence and stamina, then opens the i-frame window. The roll
+-- itself moves the character on the client (which owns its physics); nearby players
+-- get "Dodged" to play the roll pose.
+local function onDodge(player: Player, direction: any)
+	local character = player.Character
+	local root = character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
+	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+	if not root or not humanoid or humanoid.Health <= 0 then
+		return
+	end
+	local s = getState(player)
+	local now = os.clock()
+	if now - s.LastDodge < Balance.Dodge.Cooldown * 0.75 or not Stamina.CanAct(s.Stamina, now, STAMINA_SLACK) then
+		return
+	end
+	s.LastDodge = now
+	Stamina.Spend(s.Stamina, now, Balance.Stamina.Dodge)
+	-- the server hears about the roll a little late, so its window starts on arrival
+	-- and runs the full i-frame length from there
+	s.IFrames = { now, now + (Balance.Dodge.IFrameEnd - Balance.Dodge.IFrameStart) }
+	local kind = if typeof(direction) == "Vector3" and direction.Magnitude > 0.1 then "Roll" else "Backstep"
+	for _, other in ipairs(Players:GetPlayers()) do
+		if other ~= player then
+			local oc = other.Character
+			local oroot = oc and oc:FindFirstChild("HumanoidRootPart") :: BasePart?
+			if oroot and (oroot.Position - root.Position).Magnitude < 120 then
+				Net.Event("Dodged"):FireClient(other, player, kind)
+			end
+		end
+	end
+end
+
+-- True while `player` is inside a dodge's i-frames: enemy and boss hits miss them.
+-- A miss tells the client so it can show "DODGED".
+function CombatService:IsInvulnerable(player: Player): boolean
+	local s = state[player]
+	if not s then
+		return false
+	end
+	local now = os.clock()
+	if now >= s.IFrames[1] and now <= s.IFrames[2] then
+		Net.Event("Evaded"):FireClient(player)
+		return true
+	end
+	return false
+end
+
+-- The player's current stamina (for tests and the admin panel).
+function CombatService:GetStamina(player: Player): number
+	return Stamina.Get(getState(player).Stamina, os.clock())
+end
+
+function CombatService:RefillStamina(player: Player)
+	Stamina.Refill(getState(player).Stamina, os.clock())
+end
+
 function CombatService:ResetCombo(player: Player)
 	local s = getState(player)
 	s.Combo = 0
@@ -157,6 +226,16 @@ end
 
 function CombatService:Start()
 	Net.Event("Attack").OnServerEvent:Connect(onAttack)
+	Net.Event("Dodge").OnServerEvent:Connect(onDodge)
+	local function hook(player: Player)
+		player.CharacterAdded:Connect(function()
+			CombatService:RefillStamina(player)
+		end)
+	end
+	for _, player in ipairs(Players:GetPlayers()) do
+		hook(player)
+	end
+	Players.PlayerAdded:Connect(hook)
 	Players.PlayerRemoving:Connect(function(player)
 		state[player] = nil
 	end)

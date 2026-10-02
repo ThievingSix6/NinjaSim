@@ -29,7 +29,15 @@
 
 local Combo = {}
 
-Combo.ChainWindow = 0.6 -- seconds after a cooldown ends before the chain resets
+Combo.ChainWindow = 0.7 -- seconds after a cooldown ends before the chain resets
+
+-- Every move's Duration below is stretched by this (2026-10-02 Souls-style pacing): the
+-- poses are fractions of Duration, so the moves play slower and heavier without retiming.
+Combo.Pace = 1.25
+
+-- Reach (2026-10-02): no weapon cuts further round the player than the katana. Only one
+-- move per weapon hits all the way round (Arc -1) and it has no extra Reach; spear
+-- thrusts keep their longer Reach but in a narrow Width lane.
 
 Combo.Moves = {
 	{
@@ -177,7 +185,7 @@ Combo.Moves = {
 		Arc = -1,
 		Lunge = 1.5,
 		Reach = 0,
-		ExtraTargets = 2,
+		ExtraTargets = 1,
 		Stun = 0,
 		Keys = {
 			{
@@ -261,7 +269,7 @@ Combo.Moves = {
 		Arc = 0.2,
 		Lunge = 2.5,
 		Reach = 2,
-		ExtraTargets = 1,
+		ExtraTargets = 0,
 		Stun = 0.9,
 		Finisher = true,
 		Keys = {
@@ -334,9 +342,9 @@ Combo.Nunchaku = {
 		Trail = { 0.12, 0.85 },
 		Damage = 0.75,
 		Knockback = 0.2,
-		Arc = -0.2,
+		Arc = 0.1,
 		Lunge = 0.8,
-		Reach = 1.5,
+		Reach = 0.5,
 		ExtraTargets = 0,
 		Stun = 0.15,
 		Whirl = { From = 0.08, To = 0.85, Plane = "Front", Turns = 2.5 },
@@ -369,10 +377,10 @@ Combo.Nunchaku = {
 		Trail = { 0.15, 0.9 },
 		Damage = 0.85,
 		Knockback = 0.6,
-		Arc = -1,
+		Arc = -0.1,
 		Lunge = 0.5,
-		Reach = 2,
-		ExtraTargets = 2,
+		Reach = 0.5,
+		ExtraTargets = 0,
 		Stun = 0.2,
 		Whirl = { From = 0.12, To = 0.9, Plane = "Flat", Turns = -1.75 },
 		Keys = {
@@ -404,10 +412,10 @@ Combo.Nunchaku = {
 		Trail = { 0.1, 0.9 },
 		Damage = 1.1,
 		Knockback = 1,
-		Arc = -1,
+		Arc = 0,
 		Lunge = 2,
-		Reach = 2.5,
-		ExtraTargets = 2,
+		Reach = 1,
+		ExtraTargets = 1,
 		Stun = 0.3,
 		Airborne = true,
 		Whirl = { From = 0.1, To = 0.88, Plane = "Side", Turns = 2 },
@@ -442,8 +450,8 @@ Combo.Nunchaku = {
 		Knockback = 0.8,
 		Arc = -1,
 		Lunge = 0,
-		Reach = 3,
-		ExtraTargets = 4,
+		Reach = 0,
+		ExtraTargets = 1,
 		Stun = 0.25,
 		Whirl = { From = 0.08, To = 0.92, Plane = "Flat", Turns = 3 },
 		Keys = {
@@ -469,10 +477,10 @@ Combo.Nunchaku = {
 		Trail = { 0.05, 0.62 },
 		Damage = 2.4,
 		Knockback = 2.6,
-		Arc = 0.1,
+		Arc = 0.3,
 		Lunge = 3,
-		Reach = 3,
-		ExtraTargets = 3,
+		Reach = 1.5,
+		ExtraTargets = 1,
 		Stun = 1,
 		Finisher = true,
 		Whirl = { From = 0.04, To = 0.48, Plane = "Side", Turns = 1.5 },
@@ -520,9 +528,9 @@ Combo.Spear = {
 		Damage = 0.65,
 		Knockback = 0.25,
 		Arc = 0.8,
-		Width = 3.5,
+		Width = 2.5,
 		Lunge = 1,
-		Reach = 6,
+		Reach = 5,
 		ExtraTargets = 0,
 		Stun = 0.1,
 		Keys = {
@@ -540,10 +548,10 @@ Combo.Spear = {
 		Damage = 0.95,
 		Knockback = 0.4,
 		Arc = 0.8,
-		Width = 3.5,
+		Width = 2.5,
 		Lunge = 1.2,
-		Reach = 6.5,
-		ExtraTargets = 1,
+		Reach = 5.5,
+		ExtraTargets = 0,
 		Stun = 0.15,
 		Keys = {
 			{ T = 0.18, Ease = "Out", RootPos = { 0, -0.45, 0 }, Root = { 0, -25, 0 }, Waist = { 0, -10, 0 }, Neck = { 0, 35, 0 }, RightShoulder = { -58, 40, -20 }, RightElbow = { 91, 0, 0 }, RightWrist = { 15, 8, 0 }, Grip = { -58, 11, 0 }, LeftShoulder = { 45, -31, 26 }, LeftElbow = { 9, 0, 0 }, LeftWrist = { -1, 0, 0 }, RightHip = { -20, 0, 12 }, RightKnee = { -35, 0, 0 }, LeftHip = { 40, 0, -8 }, LeftKnee = { -45, 0, 0 } },
@@ -563,8 +571,8 @@ Combo.Spear = {
 		Knockback = 0.7,
 		Arc = -1,
 		Lunge = 0.5,
-		Reach = 4.5,
-		ExtraTargets = 3,
+		Reach = 1,
+		ExtraTargets = 1,
 		Stun = 0.2,
 		Spin = { From = 0.06, To = 0.9, Turns = 0, Axis = "Y", Slide = -1.6 },
 		Keys = {
@@ -582,10 +590,10 @@ Combo.Spear = {
 		Trail = { 0.1, 0.65 },
 		Damage = 1.1,
 		Knockback = 1.5,
-		Arc = -1,
+		Arc = 0,
 		Lunge = 1,
-		Reach = 2.5,
-		ExtraTargets = 2,
+		Reach = 1,
+		ExtraTargets = 0,
 		Stun = 0.35,
 		Airborne = true,
 		Spin = { From = 0.1, To = 0.58, Turns = 2, Axis = "X", Slide = 1.35 },
@@ -604,10 +612,10 @@ Combo.Spear = {
 		Trail = { 0.1, 0.76 },
 		Damage = 0.95,
 		Knockback = 0.9,
-		Arc = -1,
+		Arc = 0.3,
 		Lunge = 0,
-		Reach = 4.5,
-		ExtraTargets = 4,
+		Reach = 2.5,
+		ExtraTargets = 1,
 		Stun = 0.25,
 		Spin = { From = 0.1, To = 0.74, Turns = 3, Axis = "Y", Slide = 1.35 },
 		Keys = {
@@ -625,10 +633,10 @@ Combo.Spear = {
 		Damage = 2.4,
 		Knockback = 2.8,
 		Arc = 0.7,
-		Width = 4.5,
+		Width = 3,
 		Lunge = 4,
-		Reach = 9,
-		ExtraTargets = 3,
+		Reach = 7,
+		ExtraTargets = 1,
 		Stun = 1,
 		Finisher = true,
 		Spin = { From = 0.36, To = 0.98, Turns = 0, Axis = "Y", Slide = -1.4 },
@@ -674,7 +682,7 @@ Combo.Claws = {
 	},
 	{
 		Name = "Cross slash", Duration = 0.45, Cooldown = 0.75, HitAt = 0.5, Trail = { 0.2, 0.65 },
-		Damage = 0.75, Knockback = 0.4, Arc = 0, Lunge = 1.5, Reach = 0.5, ExtraTargets = 1, Stun = 0.15,
+		Damage = 0.75, Knockback = 0.4, Arc = 0, Lunge = 1.5, Reach = 0.5, ExtraTargets = 0, Stun = 0.15,
 		Keys = {
 			{
 				T = 0.22, Ease = "Out", RootPos = { 0, -0.2, 0 }, Waist = { 10, 0, 0 }, Neck = { -10, 0, 0 },
@@ -695,7 +703,7 @@ Combo.Claws = {
 	},
 	{
 		Name = "Triple flurry", Duration = 0.55, Cooldown = 0.85, HitAt = 0.7, Trail = { 0.1, 0.85 },
-		Damage = 0.85, Knockback = 0.3, Arc = -0.1, Lunge = 1.5, Reach = 0, ExtraTargets = 1, Stun = 0.25,
+		Damage = 0.85, Knockback = 0.3, Arc = -0.1, Lunge = 1.5, Reach = 0, ExtraTargets = 0, Stun = 0.25,
 		Keys = {
 			{
 				T = 0.1, Ease = "Out", RootPos = { 0, -0.4, 0 }, Root = { 0, -20, 0 }, Neck = { 0, 20, 0 },
@@ -726,7 +734,7 @@ Combo.Claws = {
 	},
 	{
 		Name = "Whirling claws", Duration = 0.6, Cooldown = 0.95, HitAt = 0.55, Trail = { 0.12, 0.8 },
-		Damage = 0.85, Knockback = 0.6, Arc = -1, Lunge = 0.5, Reach = 1, ExtraTargets = 3, Stun = 0.2,
+		Damage = 0.85, Knockback = 0.6, Arc = -1, Lunge = 0.5, Reach = 0, ExtraTargets = 1, Stun = 0.2,
 		Keys = {
 			{
 				T = 0.15, Ease = "Out", RootPos = { 0, -0.4, 0 }, Root = { 0, 40, 0 }, Neck = { 0, -20, 0 },
@@ -752,7 +760,7 @@ Combo.Claws = {
 	},
 	{
 		Name = "Rising double rake", Duration = 0.5, Cooldown = 0.85, HitAt = 0.5, Trail = { 0.25, 0.7 },
-		Damage = 0.85, Knockback = 1.3, Arc = 0, Lunge = 1.5, Reach = 0.5, ExtraTargets = 2, Stun = 0.35, Airborne = true,
+		Damage = 0.85, Knockback = 1.3, Arc = 0, Lunge = 1.5, Reach = 0.5, ExtraTargets = 1, Stun = 0.35, Airborne = true,
 		Keys = {
 			{
 				T = 0.25, Ease = "Out", RootPos = { 0, -0.9, 0 }, Waist = { -25, 0, 0 }, Neck = { 20, 0, 0 },
@@ -773,7 +781,7 @@ Combo.Claws = {
 	},
 	{
 		Name = "Pouncing X-slash", Duration = 0.8, Cooldown = 1.6, HitAt = 0.52, Trail = { 0.3, 0.62 },
-		Damage = 1.75, Knockback = 2.5, Arc = 0.1, Lunge = 3.5, Reach = 2, ExtraTargets = 3, Stun = 0.9, Finisher = true, Airborne = true,
+		Damage = 1.75, Knockback = 2.5, Arc = 0.1, Lunge = 3.5, Reach = 2, ExtraTargets = 1, Stun = 0.9, Finisher = true, Airborne = true,
 		Keys = {
 			{
 				T = 0.3, Ease = "Out", RootPos = { 0, 2.2, 0 }, Waist = { 20, 0, 0 }, Neck = { -15, 0, 0 },
@@ -801,6 +809,12 @@ Combo.Sets = {
 	Spear = Combo.Spear,
 	Claws = Combo.Claws,
 }
+
+for _, moves in pairs(Combo.Sets) do
+	for _, move in ipairs(moves) do
+		move.Duration *= Combo.Pace
+	end
+end
 
 -- Shop / inventory label for a weapon type, e.g. "Spear, 6-hit combo".
 local STYLE_NAMES = { Katana = "Katana", Nunchaku = "Nunchucks", Spear = "Spear", Claws = "Claws (dual)" }
