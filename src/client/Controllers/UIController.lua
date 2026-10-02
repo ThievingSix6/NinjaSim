@@ -14,6 +14,13 @@ UIController.Scale = 1
 
 local DESIGN = Vector2.new(1280, 720)
 local UI_SIZE = 0.88 -- the whole UI a bit smaller than the design so it crowds the view less
+-- extra size per layer on top of UI_SIZE: the main-screen HUD 15% smaller again (2026-10-03)
+local LAYER_SIZE: { [string]: number } = { HUD = 0.85 }
+
+-- The scale a layer is drawn at (UIController.Scale x its LAYER_SIZE).
+function UIController:LayerScale(layerName: string): number
+	return self.Scale * (LAYER_SIZE[layerName] or 1)
+end
 
 local function makeLayer(name: string, order: number): ScreenGui
 	local gui = Instance.new("ScreenGui")
@@ -54,7 +61,7 @@ function UIController:Root(layerName: string): Frame
 	local root = Instance.new("Frame")
 	root.Name = "Root"
 	root.BackgroundTransparency = 1
-	fitRoot(layer, root, self.Scale)
+	fitRoot(layer, root, self:LayerScale(layerName))
 	root.Parent = layer
 	return root
 end
@@ -80,11 +87,12 @@ function UIController:Start()
 		local size = camera.ViewportSize
 		local scale = math.clamp(math.min(size.X / DESIGN.X, size.Y / DESIGN.Y) * UI_SIZE, 0.5, 1.25)
 		self.Scale = scale
-		for _, layer in pairs(self.Layers) do
-			(layer:FindFirstChild("AutoScale") :: UIScale).Scale = scale
+		for name, layer in pairs(self.Layers) do
+			local layerScale = self:LayerScale(name);
+			(layer:FindFirstChild("AutoScale") :: UIScale).Scale = layerScale
 			local root = layer:FindFirstChild("Root")
 			if root then
-				fitRoot(layer, root :: Frame, scale)
+				fitRoot(layer, root :: Frame, layerScale)
 			end
 		end
 	end

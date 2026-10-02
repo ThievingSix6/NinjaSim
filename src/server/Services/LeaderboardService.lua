@@ -3,6 +3,9 @@
 	an OrderedDataStore (Rebirths first, then Level) so it is global across
 	servers. If DataStores are unavailable (Studio without API access) it
 	falls back to ranking the players in this server.
+
+	Each row shows the ninja's avatar headshot (rbxthumb), and the #1 ninja stands
+	beside the board as a full-size statue of their avatar on a gold pedestal.
 ]]
 
 local Players = game:GetService("Players")
@@ -18,6 +21,9 @@ local LeaderboardService = {}
 local services
 local store: OrderedDataStore? = nil
 local rowsFrame: Frame
+local boardFrame: CFrame
+local folder: Model
+local statueOf: number? = nil
 local names: { [number]: string } = {}
 local REFRESH = 60
 local SHOWN = 10
@@ -51,8 +57,9 @@ local function buildBoard()
 	local base = Zones.WorldPosition(zone, zone.BoardOffset)
 	local faceTo = Vector3.new(zone.Spawn.X, base.Y, zone.Spawn.Z)
 	local cf = CFrame.lookAt(base, faceTo)
-	local folder = Instance.new("Model")
+	folder = Instance.new("Model")
 	folder.Name = "Leaderboard"
+	boardFrame = cf
 	local function part(size: Vector3, offset: CFrame, color: Color3, material: Enum.Material): Part
 		local p = Instance.new("Part")
 		p.Anchored = true
@@ -98,24 +105,91 @@ local function buildBoard()
 	folder.Parent = workspace
 end
 
+-- The #1 ninja's avatar as a statue on a gold pedestal beside the board.
+local function placeStatue(userId: number)
+	if statueOf == userId or userId <= 0 then
+		return
+	end
+	local ok, model = pcall(function()
+		return Players:CreateHumanoidModelFromUserId(userId)
+	end)
+	if not ok or not model then
+		return
+	end
+	local old = folder:FindFirstChild("TopStatue")
+	if old then
+		old:Destroy()
+	end
+	statueOf = userId
+	local holder = Instance.new("Model")
+	holder.Name = "TopStatue"
+	local base = boardFrame * CFrame.new(-14, 0, 0)
+	local pedestal = Instance.new("Part")
+	pedestal.Size = Vector3.new(6, 2.4, 6)
+	pedestal.CFrame = base * CFrame.new(0, 1.2, 0)
+	pedestal.Color = Color3.fromRGB(255, 200, 70)
+	pedestal.Material = Enum.Material.Foil
+	pedestal.Anchored = true
+	pedestal.Parent = holder
+	local humanoid = model:FindFirstChildOfClass("Humanoid")
+	if humanoid then
+		humanoid.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None
+	end
+	for _, d in ipairs(model:GetDescendants()) do
+		if d:IsA("BasePart") then
+			d.Anchored = true
+			d.CanCollide = false
+		elseif d:IsA("Script") or d:IsA("LocalScript") then
+			d:Destroy()
+		end
+	end
+	local _, size = model:GetBoundingBox()
+	model:PivotTo(base * CFrame.new(0, 2.4 + size.Y / 2, 0))
+	model.Name = "#1 " .. nameFor(userId)
+	model.Parent = holder
+	holder.Parent = folder
+end
+
 local function render(entries: { { UserId: number, Value: number } })
 	for _, child in ipairs(rowsFrame:GetChildren()) do
-		if child:IsA("TextLabel") then
+		if child:IsA("GuiObject") then
 			child:Destroy()
 		end
 	end
 	for i, entry in ipairs(entries) do
-		local row = Instance.new("TextLabel")
+		local row = Instance.new("Frame")
 		row.BackgroundTransparency = 1
-		row.Size = UDim2.new(1, 0, 0, 44)
+		row.Size = UDim2.new(1, 0, 0, 46)
 		row.LayoutOrder = i
-		row.Font = Enum.Font.GothamBlack
-		row.TextScaled = true
-		row.TextXAlignment = Enum.TextXAlignment.Left
-		row.RichText = true
-		row.TextColor3 = RANK_COLORS[i] or Color3.fromRGB(246, 242, 255)
-		row.Text = string.format('#%d  %s  <font color="#b2aad2">%s</font>', i, nameFor(entry.UserId), describe(entry.Value))
 		row.Parent = rowsFrame
+		-- avatar headshot
+		local avatar = Instance.new("ImageLabel")
+		avatar.Name = "Avatar"
+		avatar.BackgroundColor3 = Color3.fromRGB(46, 40, 70)
+		avatar.Size = UDim2.fromOffset(44, 44)
+		avatar.Image = string.format("rbxthumb://type=AvatarHeadShot&id=%d&w=150&h=150", entry.UserId)
+		avatar.Parent = row
+		local corner = Instance.new("UICorner")
+		corner.CornerRadius = UDim.new(0.5, 0)
+		corner.Parent = avatar
+		local ring = Instance.new("UIStroke")
+		ring.Color = RANK_COLORS[i] or Color3.fromRGB(120, 110, 160)
+		ring.Thickness = 3
+		ring.Parent = avatar
+		local label = Instance.new("TextLabel")
+		label.BackgroundTransparency = 1
+		label.Size = UDim2.new(1, -56, 1, 0)
+		label.Position = UDim2.fromOffset(56, 0)
+		label.Font = Enum.Font.GothamBlack
+		label.TextScaled = true
+		label.TextXAlignment = Enum.TextXAlignment.Left
+		label.RichText = true
+		label.TextColor3 = RANK_COLORS[i] or Color3.fromRGB(246, 242, 255)
+		label.Text = string.format('#%d  %s  <font color="#b2aad2">%s</font>', i, nameFor(entry.UserId), describe(entry.Value))
+		label.Parent = row
+	end
+	if entries[1] then
+		task.spawn(placeStatue, entries[1].UserId)
 	end
 end
 
