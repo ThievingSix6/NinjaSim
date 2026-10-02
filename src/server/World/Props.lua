@@ -1079,4 +1079,53 @@ function Props.FoxStatue(parent: Instance, cf: CFrame, mirror: boolean?)
 	return m
 end
 
+-- The Mutation Machine (MutationService): a stone base, a glass capsule with a glowing
+-- core between two neon coils, a hopper on top and a sign; front (-Z) faces the plaza.
+-- Carries the "MutatePrompt" the client opens the Mutate menu with.
+function Props.MutationMachine(parent: Instance, cf: CFrame)
+	local m = model(parent, "MutationMachine")
+	local metal, trim = rgb(52, 48, 66), rgb(255, 90, 210)
+	part(m, Vector3.new(14, 1.6, 12), cf * CFrame.new(0, 0.8, 0), rgb(120, 116, 110), Enum.Material.Slate)
+	part(m, Vector3.new(11, 2.4, 9), cf * CFrame.new(0, 2.8, 0), metal, Enum.Material.DiamondPlate)
+	local glass = part(m, Vector3.new(9, 7.5, 7.5), cf * CFrame.new(0, 7.75, 0) * UP, rgb(200, 240, 255), Enum.Material.Glass, Enum.PartType.Cylinder)
+	glass.Transparency = 0.55
+	local core = part(m, Vector3.new(3.2, 3.2, 3.2), cf * CFrame.new(0, 7.6, 0), trim, Enum.Material.Neon, Enum.PartType.Ball)
+	light(core, trim, 22, 2.2)
+	Particles.Create("Galaxy", core, { Rate = 8 })
+	for _, y in ipairs({ 4.6, 10.8 }) do
+		part(m, Vector3.new(0.8, 8.4, 8.4), cf * CFrame.new(0, y, 0) * UP, rgb(120, 230, 255), Enum.Material.Neon, Enum.PartType.Cylinder)
+	end
+	part(m, Vector3.new(10, 1.4, 8.6), cf * CFrame.new(0, 12.2, 0), metal, Enum.Material.DiamondPlate)
+	-- hopper you drop pets and hats into
+	wedge(m, Vector3.new(5, 2.6, 2.4), cf * CFrame.new(0, 14.2, -1.2) * CFrame.Angles(0, math.pi, 0), metal, Enum.Material.Metal)
+	wedge(m, Vector3.new(5, 2.6, 2.4), cf * CFrame.new(0, 14.2, 1.2), metal, Enum.Material.Metal)
+	-- side tubes
+	for sx = -1, 1, 2 do
+		part(m, Vector3.new(11, 0.9, 0.9), cf * CFrame.new(sx * 5.4, 7.5, 0) * UP, rgb(255, 210, 90), Enum.Material.Neon, Enum.PartType.Cylinder)
+	end
+	local panel = part(m, Vector3.new(6, 2.2, 0.4), cf * CFrame.new(0, 2.9, -4.7), rgb(30, 20, 40), Enum.Material.SmoothPlastic)
+	local gui = Instance.new("SurfaceGui")
+	gui.Face = Enum.NormalId.Front
+	gui.CanvasSize = Vector2.new(300, 110)
+	gui.LightInfluence = 0
+	gui.Parent = panel
+	local label = Instance.new("TextLabel")
+	label.BackgroundTransparency = 1
+	label.Size = UDim2.fromScale(1, 1)
+	label.Font = Enum.Font.GothamBlack
+	label.TextScaled = true
+	label.Text = "MUTATION MACHINE"
+	label.TextColor3 = rgb(255, 150, 230)
+	label.Parent = gui
+	local prompt = Instance.new("ProximityPrompt")
+	prompt.Name = "MutatePrompt"
+	prompt.ActionText = "Mutate"
+	prompt.ObjectText = "Mutation Machine"
+	prompt.HoldDuration = 0
+	prompt.MaxActivationDistance = 16
+	prompt.RequiresLineOfSight = false
+	prompt.Parent = panel
+	return m
+end
+
 return Props

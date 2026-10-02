@@ -15,6 +15,7 @@
 
 local Assets = require(script.Parent.Assets)
 local Particles = require(script.Parent.Particles)
+local MutationLook = require(script.Parent.MutationLook)
 local Hats = require(script.Parent.Parent.Config.Hats)
 
 local HatBuilder = {}
@@ -430,8 +431,12 @@ function HatBuilder.Build(hatOrId: any, scale: number?): Model?
 	root.CFrame = CFrame.new()
 	root.Parent = model
 	model.PrimaryPart = root
-	for _, p in ipairs(build(def, rarityName, CFrame.new(), scale or 1, model)) do
+	local parts = build(def, rarityName, CFrame.new(), scale or 1, model)
+	for _, p in ipairs(parts) do
 		p.Anchored = true
+	end
+	if type(hatOrId) == "table" and hatOrId.M then
+		MutationLook.Tint(parts, hatOrId.M, parts[1]) -- Mutation Machine mutation
 	end
 	-- Kit.Viewport looks from +Z; turn the face towards the camera
 	model:SetAttribute("ViewRotation", CFrame.Angles(0, math.pi + math.rad(10), 0))
@@ -523,11 +528,15 @@ function HatBuilder.Wear(character: Model, hat: any?): Folder?
 	local folder = Instance.new("Folder")
 	folder.Name = HatBuilder.FolderName
 	folder:SetAttribute("HatId", def.Id)
-	for _, p in ipairs(build(def, hat.R, head.CFrame * fit, k, folder)) do
+	local parts = build(def, hat.R, head.CFrame * fit, k, folder)
+	for _, p in ipairs(parts) do
 		local weld = Instance.new("WeldConstraint")
 		weld.Part0 = head
 		weld.Part1 = p
 		weld.Parent = p
+	end
+	if hat.M then
+		MutationLook.Tint(parts, hat.M, parts[1])
 	end
 	folder.Parent = character
 	return folder

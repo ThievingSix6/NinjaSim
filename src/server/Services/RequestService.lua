@@ -155,6 +155,10 @@ end
 function handlers.SalvageHatsUpTo(player, rarity)
 	return services.LootService:SalvageUpTo(player, str(rarity))
 end
+-- the Mutation Machine (MutationService)
+function handlers.MutateItem(player, kind, uid, lucky)
+	return services.MutationService:Roll(player, str(kind), str(uid), lucky == true)
+end
 -- suits and mastery (MasteryService, SkillService:CastUltimate)
 function handlers.SetSuit(player, tierId)
 	return services.MasteryService:SetSuit(player, str(tierId) or "")

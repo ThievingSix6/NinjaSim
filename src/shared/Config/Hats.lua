@@ -17,6 +17,7 @@
 ]]
 
 local Skills = require(script.Parent.Skills)
+local Mutations = require(script.Parent.Mutations)
 
 local Hats = {}
 
@@ -249,6 +250,15 @@ function Hats.Name(hat): string
 	if not base then
 		return "Unknown Hat"
 	end
+	local m = Mutations.Get(hat.M) -- a Mutation Machine mutation prefixes the name
+	if m then
+		return m.Name .. " " .. Hats.BaseName(hat)
+	end
+	return Hats.BaseName(hat)
+end
+
+function Hats.BaseName(hat): string
+	local base = Hats.ById[hat.Id]
 	local rarity = Hats.Rarity(hat.R)
 	local a1 = hat.A[1] and Hats.AffixById[hat.A[1].K]
 	local a2 = hat.A[2] and Hats.AffixById[hat.A[2].K]
@@ -314,6 +324,18 @@ function Hats.Bonus(hat)
 	end
 	if type(hat.P) == "table" and Hats.ProcBySkill[hat.P.S] and type(hat.P.C) == "number" then
 		table.insert(out.Procs, { Skill = hat.P.S, Chance = math.clamp(hat.P.C, 0, 1) })
+	end
+	-- a mutation (Mutation Machine) multiplies every stat and the proc chance
+	local m = Mutations.Get(hat.M)
+	if m and m.HatMult then
+		for key, value in pairs(out) do
+			if type(value) == "number" then
+				out[key] = value * m.HatMult
+			end
+		end
+		for _, proc in ipairs(out.Procs) do
+			proc.Chance = math.min(1, proc.Chance * m.HatMult)
+		end
 	end
 	return out
 end

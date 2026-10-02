@@ -808,6 +808,74 @@ return function(E)
 		print("back to the rank's suit:", DC:Request("SetSuit", ""))
 	end)
 
+	step("mutation machine", function()
+		local DC = E.cm("Controllers.DataController")
+		local Mutations = E.shared("Config.Mutations")
+		local Hats = E.shared("Config.Hats")
+		local MS = E.sm("MutationService")
+		local data = E.sm("DataService"):Get(player)
+		data.Coins += 1e9
+		data.Shards += 1000
+		local uid = E.sm("PetService"):Grant(player, "fox")
+		local hat = Hats.Roll(1, 10, 0, false, nil, "Rare")
+		data.HatSerial += 1
+		local hatUid = tostring(data.HatSerial)
+		data.Hats[hatUid] = hat
+		E.sm("DataService"):Changed(player, "Hats")
+		local root = player.Character.HumanoidRootPart
+		print("roll far from the machine:", DC:Request("MutateItem", "Pet", uid, false))
+		E.sm("ZoneService"):MarkTeleported(player)
+		root.CFrame = CFrame.new(MS.Position() + Vector3.new(6, 3, 0))
+		task.wait(0.3)
+		local coins0 = data.Coins
+		local ok, result = DC:Request("MutateItem", "Pet", uid, false)
+		print("pet roll:", ok, result and result.Mutation, "coins spent", coins0 - data.Coins, "saved", data.Pets[uid].Mutation)
+		if not ok or not data.Pets[uid].Mutation then
+			report("scenario", "the machine did not mutate the pet")
+		end
+		task.wait(1.3)
+		local shards0 = data.Shards
+		ok, result = DC:Request("MutateItem", "Hat", hatUid, true)
+		print("lucky hat roll:", ok, result and result.Mutation, "shards spent", shards0 - data.Shards, "name", Hats.Name(data.Hats[hatUid]))
+		if not ok or not data.Hats[hatUid].M then
+			report("scenario", "the machine did not mutate the hat")
+		end
+		-- hat stats scale with the mutation
+		local plain = table.clone(hat)
+		plain.M = nil
+		local before, after = Hats.Bonus(plain), Hats.Bonus(data.Hats[hatUid])
+		for key, value in pairs(before) do
+			if type(value) == "number" then
+				print(string.format("  hat %s %.3f -> %.3f", key, value, after[key]))
+				break
+			end
+		end
+		-- odds: Secret is rare, lucky rolls tilt toward the rare ones; eggs never give it
+		local counts, luckyCounts = {}, {}
+		local rng = nil
+		for _ = 1, 20000 do
+			local a = Mutations.MachineRoll(false, 0, rng)
+			counts[a] = (counts[a] or 0) + 1
+			local b = Mutations.MachineRoll(true, 0, rng)
+			luckyCounts[b] = (luckyCounts[b] or 0) + 1
+		end
+		print(string.format("machine odds over 20000: Big %d, Rainbow %d, Celestial %d, Secret %d; lucky Secret %d", counts.Big or 0, counts.Rainbow or 0, counts.Celestial or 0, counts.Secret or 0, luckyCounts.Secret or 0))
+		if (luckyCounts.Secret or 0) <= (counts.Secret or 0) then
+			report("scenario", "lucky rolls did not raise the Secret odds")
+		end
+		local hatched = 0
+		for _ = 1, 50000 do
+			if Mutations.Roll(5, rng) == "Secret" then
+				hatched += 1
+			end
+		end
+		if hatched > 0 then
+			report("scenario", "an egg hatch rolled Secret")
+		end
+		local secret = E.C["ReplicatedStorage.Shared.Visuals.PetBuilder"].Build(E.shared("Config.Pets").ById.fox, 1, "Secret")
+		print("Secret fox parts", #secret:GetDescendants(), "outline", secret:FindFirstChild("SecretOutline") ~= nil)
+	end)
+
 	step("ragdolls", function()
 		local AC = E.cm("Controllers.AnimationController")
 		print("ragdolls made so far", AC.RagdollCount)

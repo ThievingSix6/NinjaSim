@@ -16,6 +16,7 @@
 
 local Props = require(script.Parent.Props)
 local Landscape = require(game:GetService("ReplicatedStorage").Shared.Landscape)
+local Mutations = require(game:GetService("ReplicatedStorage").Shared.Config.Mutations)
 
 local ZoneDecor = {}
 
@@ -224,6 +225,12 @@ function ZoneDecor.Village(ctx)
 	local f, rng = ctx.Folder, ctx.Rng
 	local zone = ctx.Zone
 	local spawnX = zone.Spawn.X - zone.Center.X
+
+	-- ===== the Mutation Machine beside the spawn plaza (MutationService) =====
+	local machine = Mutations.Machine.Offset
+	ctx.Claim(machine.X, machine.Y, 10)
+	local mcf = ctx.At(machine.X, machine.Y, 0, 0.3)
+	Props.MutationMachine(f, CFrame.lookAt(mcf.Position, Vector3.new(zone.Spawn.X, mcf.Position.Y, zone.Spawn.Z)))
 
 	-- ===== spawn plaza: the great torii over the road, cherry trees all round =====
 	Props.Torii(f, roadFrame(ctx, spawnX + 34), 24, 26, VERMILION)

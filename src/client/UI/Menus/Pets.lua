@@ -163,7 +163,7 @@ function Menu.Build(ctx)
 				{
 					Text = "", Icon = "Trash", IconSize = 34, Color = Common.Colors.Danger, Enabled = not owned.Fav,
 					OnClick = function()
-						local warning = if mutation then " It's a " .. mutation.Name .. " mutation (" .. Format.Mult(mutation.Mult) .. ", 1 in " .. Format.Commas(mutation.OneIn) .. ")!" else ""
+						local warning = if mutation then " It's a " .. mutation.Name .. " mutation (" .. Format.Mult(mutation.Mult) .. (if mutation.OneIn > 0 then ", 1 in " .. Format.Commas(mutation.OneIn) else "") .. ")!" else ""
 						Common.Confirm(ctx.Parent, "Delete pet?", "Delete " .. name .. "?" .. warning .. " This can't be undone.", "Delete", Common.Colors.Danger, function()
 							DataController:Request("DeletePets", { uid })
 						end)

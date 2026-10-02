@@ -77,7 +77,7 @@ return function(E)
 	local models = {}
 	for _, petId in ipairs(PETS) do
 		local list = { { mutation = "", model = serialize(PetBuilder.Build(Pets.ById[petId], 1)) } }
-		for _, m in ipairs(Mutations.List) do
+		for _, m in ipairs(Mutations.All or Mutations.List) do
 			table.insert(list, { mutation = m.Id, model = serialize(PetBuilder.Build(Pets.ById[petId], 1, m.Id)) })
 		end
 		models[petId] = list
@@ -89,7 +89,7 @@ return function(E)
 		end
 	end
 	local mutations = {}
-	for _, m in ipairs(Mutations.List) do
+	for _, m in ipairs(Mutations.All or Mutations.List) do
 		table.insert(mutations, { id = m.Id, name = m.Name, mult = m.Mult, oneIn = m.OneIn, color = col(m.Color) })
 	end
 	local order = {}

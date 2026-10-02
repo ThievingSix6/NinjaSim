@@ -250,6 +250,86 @@ function looks.Celestial(model: Model, body: BasePart)
 	light(body, rgb(255, 230, 150), 10, 1.6)
 end
 
+-- Secret (Mutation Machine only): a black glitch with neon seams that shift colour,
+-- an outline that cycles through the rainbow, orbiting runes and a galaxy haze.
+function looks.Secret(model: Model, body: BasePart)
+	local void = rgb(10, 6, 18)
+	local i = 0
+	for _, part in ipairs(bodyParts(model)) do
+		i += 1
+		if part.Material == Enum.Material.Neon or i % 4 == 0 then
+			part.Material = Enum.Material.Neon
+			part:SetAttribute("SecretPhase", i * 0.13)
+			part.Color = Color3.fromHSV((i * 0.13) % 1, 0.8, 1)
+		else
+			part.Color = void:Lerp(rgb(60, 30, 90), luminance(part.Color) * 0.4)
+			part.Material = Enum.Material.SmoothPlastic
+			part.Reflectance = 0.2
+		end
+	end
+	for _, d in ipairs(model:GetDescendants()) do
+		if d:IsA("BasePart") and d.Name == "Eye" then
+			d.Color = rgb(255, 60, 200)
+			d.Material = Enum.Material.Neon
+		end
+	end
+	local cf, size = extents(model)
+	local center = cf.Position
+	local r = math.max(size.X, size.Z) * 0.62
+	for k = 0, 5 do
+		local a = k * math.pi / 3
+		local rune = addPart(model, "Rune", Vector3.new(0.22, 0.22, 0.22), CFrame.new(center + Vector3.new(math.cos(a) * r, 0.2 + (k % 2) * 0.35, math.sin(a) * r)) * CFrame.Angles(0.6, a, 0.6), rgb(255, 255, 255), Enum.Material.Neon)
+		rune:SetAttribute("SecretPhase", k / 6)
+	end
+	local highlight = Instance.new("Highlight")
+	highlight.Name = "SecretOutline"
+	highlight.FillTransparency = 1
+	highlight.OutlineColor = rgb(255, 60, 200)
+	highlight.Parent = model
+	Particles.Create("Galaxy", body, { Rate = 18 })
+	Particles.Create("Void", body, { Rate = 10 })
+	light(body, rgb(255, 60, 200), 10, 1.8)
+end
+
+-- A hat's mutation (Mutation Machine): recolours the hat's parts the way the pet looks
+-- do and adds the mutation's particles to `emitter` (a part of the hat).
+function MutationLook.Tint(parts: { BasePart }, mutationId: string?, emitter: BasePart?)
+	local id = mutationId
+	if not id then
+		return
+	end
+	for i, part in ipairs(parts) do
+		if part.Transparency >= 1 then
+			continue
+		end
+		local l = luminance(part.Color)
+		if id == "Golden" then
+			part.Color = rgb(255, 196, 40):Lerp(rgb(255, 245, 190), math.clamp(l - 0.35, 0, 1))
+			part.Material = Enum.Material.Foil
+		elseif id == "Frozen" then
+			part.Color = part.Color:Lerp(rgb(185, 235, 255), 0.65)
+			part.Material = Enum.Material.Ice
+		elseif id == "Shocked" then
+			part.Color = part.Color:Lerp(rgb(255, 240, 80), 0.35)
+		elseif id == "Shadow" then
+			part.Color = part.Color:Lerp(rgb(24, 14, 38), 0.8)
+		elseif id == "Rainbow" then
+			part.Color = rainbowColor(i * 0.11)
+		elseif id == "Celestial" then
+			part.Color = rgb(34, 26, 92):Lerp(rgb(255, 225, 120), math.clamp(l, 0, 1) * 0.5)
+		elseif id == "Secret" then
+			part.Color = if i % 3 == 0 then Color3.fromHSV((i * 0.13) % 1, 0.8, 1) else rgb(12, 8, 20)
+			part.Material = if i % 3 == 0 then Enum.Material.Neon else Enum.Material.SmoothPlastic
+		end
+	end
+	if emitter then
+		local preset = ({ Golden = "Radiance", Frozen = "Frost", Shocked = "Lightning", Shadow = "Shadow", Rainbow = "Sparkle", Celestial = "Stars", Secret = "Galaxy", Big = "Sparkle", Giant = "Sparkle" })[id]
+		if preset then
+			Particles.Create(preset, emitter, { Rate = 6 })
+		end
+	end
+end
+
 -- Applies the look for `mutation` (a Config/Mutations entry) to `model`.
 function MutationLook.Apply(model: Model, body: BasePart, mutation)
 	model:SetAttribute("Mutation", mutation.Id)
@@ -277,6 +357,23 @@ function MutationLook.Animator(model: Model): ((number) -> ())?
 			local shift = t * 0.35
 			for i, part in ipairs(parts) do
 				part.Color = rainbowColor(phases[i] + shift)
+			end
+		end
+	elseif id == "Secret" then
+		local parts, phases = {}, {}
+		for _, d in ipairs(model:GetDescendants()) do
+			if d:IsA("BasePart") and type(d:GetAttribute("SecretPhase")) == "number" then
+				table.insert(parts, d)
+				table.insert(phases, d:GetAttribute("SecretPhase"))
+			end
+		end
+		local outline = model:FindFirstChild("SecretOutline")
+		return function(t: number)
+			for i, part in ipairs(parts) do
+				part.Color = Color3.fromHSV((phases[i] + t * 0.5) % 1, 0.8, 1)
+			end
+			if outline and outline:IsA("Highlight") then
+				outline.OutlineColor = Color3.fromHSV((t * 0.3) % 1, 0.9, 1)
 			end
 		end
 	elseif id == "Shocked" then

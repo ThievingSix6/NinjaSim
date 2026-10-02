@@ -303,7 +303,10 @@ def sheet(pet, variants, mutations, out_dir, tile=360):
         os.remove(path)
         m = by_id.get(variants[i]["mutation"])
         title = (m["name"] + " " if m else "") + pet.replace("_", " ").title()
-        sub = ("x%g stats  -  1 in %s" % (m["mult"], format(m["oneIn"], ","))) if m else "no mutation"
+        if m and not m["oneIn"]:
+            sub = "x%g stats  -  Mutation Machine only" % m["mult"]
+        else:
+            sub = ("x%g stats  -  1 in %s" % (m["mult"], format(m["oneIn"], ","))) if m else "no mutation"
         color = tuple(int(c * 255) for c in m["color"]) if m else (235, 235, 245)
         draw.text((x + 10, y + tile + 2), title, font=font, fill=color, stroke_width=2, stroke_fill=(20, 16, 30))
         draw.text((x + 10, y + tile + 26), sub, font=small, fill=(206, 216, 236))

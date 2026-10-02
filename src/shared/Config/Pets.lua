@@ -246,6 +246,9 @@ function Pets.MutatedOneIn(petId: string, mutation: string?, luck: number?): num
 	if not base or not m then
 		return base
 	end
+	if m.MachineOnly then
+		return nil -- Secret comes only from the Mutation Machine: no hatch odds
+	end
 	return math.floor(base / Mutations.ChanceOf(m.Id, luck) + 0.5)
 end
 

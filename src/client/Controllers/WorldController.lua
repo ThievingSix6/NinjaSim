@@ -55,6 +55,8 @@ function WorldController:Start(c)
 			if eggId then
 				c.MenuManager:Open("Egg", eggId)
 			end
+		elseif prompt.Name == "MutatePrompt" then
+			c.MenuManager:Open("Mutate")
 		elseif prompt.Name == "UnlockPrompt" then
 			local zoneId = parent:GetAttribute("ZoneId")
 			local zone = zoneId and Zones.Get(zoneId)
