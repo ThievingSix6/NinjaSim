@@ -1,0 +1,94 @@
+---
+base: luau
+name: ninjasim_std
+globals:
+  game:
+    any: true
+  workspace:
+    any: true
+  script:
+    any: true
+  Instance:
+    any: true
+  Vector3:
+    any: true
+  Vector2:
+    any: true
+  CFrame:
+    any: true
+  Color3:
+    any: true
+  ColorSequence:
+    any: true
+  ColorSequenceKeypoint:
+    any: true
+  NumberSequence:
+    any: true
+  NumberSequenceKeypoint:
+    any: true
+  NumberRange:
+    any: true
+  UDim:
+    any: true
+  UDim2:
+    any: true
+  Enum:
+    any: true
+  Random:
+    any: true
+  TweenInfo:
+    any: true
+  RaycastParams:
+    any: true
+  OverlapParams:
+    any: true
+  Ray:
+    any: true
+  Rect:
+    any: true
+  BrickColor:
+    any: true
+  PhysicalProperties:
+    any: true
+  Font:
+    any: true
+  tick:
+    any: true
+  time:
+    any: true
+  wait:
+    any: true
+  delay:
+    any: true
+  spawn:
+    any: true
+  warn:
+    any: true
+  typeof:
+    any: true
+  task:
+    any: true
+  DateTime:
+    any: true
+  Region3:
+    any: true
+  Faces:
+    any: true
+  Axes:
+    any: true
+  shared:
+    any: true
+  plugin:
+    any: true
+  settings:
+    any: true
+  UserSettings:
+    any: true
+  elapsedTime:
+    any: true
+  debug:
+    any: true
+  utf8:
+    any: true
+  buffer:
+    any: true

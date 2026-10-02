@@ -1,0 +1,462 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>NinjaSim UI preview</title>
+<link rel="stylesheet" href="fonts/fonts.css">
+<style>
+  html, body { margin: 0; padding: 0; }
+  body { width: 1280px; height: 720px; overflow: hidden; position: relative; font-kerning: normal; }
+  #world { position: absolute; inset: 0; overflow: hidden;
+    background: linear-gradient(180deg, #62b8f5 0%, #a9dcff 38%, #d9f1ff 50%, #7cc95a 51%, #58ad43 70%, #3f8f34 100%); }
+  #world .hill { position: absolute; border-radius: 50%; background: #5fb548; filter: blur(1px); }
+  #world .tree { position: absolute; border-radius: 40%; background: #2f8a3a; box-shadow: inset -12px -14px 0 rgba(0,0,0,.15); }
+  #world .trunk { position: absolute; background: #7a4e2a; }
+  #world .block { position: absolute; background: #b88a5a; box-shadow: inset -8px -8px 0 rgba(0,0,0,.18); }
+  #ui { position: absolute; inset: 0; }
+  .el { position: absolute; box-sizing: border-box; }
+  .bg { position: absolute; inset: 0; border-radius: inherit; overflow: hidden; pointer-events: none; }
+  .grad { position: absolute; left: 0; top: 0; width: 100px; height: 100px; transform-origin: 0 0; }
+  .kids { position: absolute; inset: 0; }
+  .clip { overflow: hidden; }
+  .txt { position: absolute; inset: 0; display: flex; box-sizing: border-box; pointer-events: none; }
+  .txt span.line { display: block; width: 100%; }
+  .vp { position: absolute; inset: 8%; border-radius: 50%; background: radial-gradient(circle at 40% 35%, rgba(255,255,255,.55), rgba(255,255,255,.12) 60%, rgba(255,255,255,0) 72%); display: flex; align-items: center; justify-content: center; font: 11px 'Fredoka One'; color: rgba(0,0,0,.35); text-align: center; }
+</style>
+</head>
+<body>
+<div id="world"></div>
+<div id="ui"></div>
+<script>
+"use strict";
+// ===== Roblox GUI -> DOM, following Roblox layout rules closely enough to judge a design =====
+const FONTS = {
+  FredokaOne: ["'Fredoka One'", 400], LuckiestGuy: ["'Luckiest Guy'", 400], Bangers: ["'Bangers'", 400],
+  GothamBlack: ["Montserrat", 900], GothamBold: ["Montserrat", 700], GothamMedium: ["Montserrat", 500],
+  GothamSemibold: ["Montserrat", 600], Gotham: ["Montserrat", 400], BuilderSansBold: ["Montserrat", 700],
+  BuilderSansExtraBold: ["Montserrat", 800], BuilderSans: ["Montserrat", 500],
+};
+let ASSETS = {};
+
+const clamp01 = v => Math.max(0, Math.min(1, v));
+const rgba = (c, a = 1) => `rgba(${Math.round(c[0] * 255)},${Math.round(c[1] * 255)},${Math.round(c[2] * 255)},${a})`;
+const kidsOf = n => n.k || [];
+const mods = (n, cls) => kidsOf(n).filter(k => k.c === cls);
+const mod = (n, cls) => kidsOf(n).find(k => k.c === cls && k.p.Enabled !== false);
+const GUI = new Set(["Frame", "TextLabel", "TextButton", "TextBox", "ImageLabel", "ImageButton", "ScrollingFrame", "ViewportFrame", "CanvasGroup"]);
+const isText = n => n.c === "TextLabel" || n.c === "TextButton" || n.c === "TextBox";
+const udim = (u, total) => u[0] * total + u[1];
+
+function sampleSeq(seq, t, channels) {
+  if (!seq || !seq.length) return null;
+  if (t <= seq[0][0]) return seq[0].slice(1);
+  for (let i = 1; i < seq.length; i++) {
+    if (t <= seq[i][0]) {
+      const a = seq[i - 1], b = seq[i], f = (t - a[0]) / Math.max(1e-6, b[0] - a[0]);
+      return a.slice(1).map((v, j) => v + (b[j + 1] - v) * f);
+    }
+  }
+  return seq[seq.length - 1].slice(1);
+}
+
+// UIGradient in Roblox is computed in the element's normalised (UV) space: t = dot(uv - .5 - offset, dir) + .5.
+// We draw it on a 100x100 square that is then stretched to the element, so rotations skew the same way.
+function gradientCss(grad, baseColor, baseAlpha) {
+  const rot = (grad.p.Rotation || 0) * Math.PI / 180;
+  const dir = [Math.cos(rot), Math.sin(rot)];
+  const L = Math.abs(dir[0]) + Math.abs(dir[1]); // css gradient line length in the square
+  const off = grad.p.Offset || [0, 0];
+  const shift = off[0] * dir[0] + off[1] * dir[1];
+  const times = new Set([0, 1]);
+  (grad.p.Color || []).forEach(k => times.add(k[0]));
+  (grad.p.Transparency || []).forEach(k => times.add(k[0]));
+  const stops = [];
+  const sorted = [...times].sort((a, b) => a - b);
+  for (const t of sorted) {
+    const c = sampleSeq(grad.p.Color, t) || [1, 1, 1];
+    const tr = (sampleSeq(grad.p.Transparency, t) || [0])[0];
+    const col = [baseColor[0] * c[0], baseColor[1] * c[1], baseColor[2] * c[2]];
+    const pct = (0.5 + (t + shift - 0.5) / L) * 100;
+    stops.push(`${rgba(col, baseAlpha * (1 - tr))} ${pct.toFixed(3)}%`);
+  }
+  const cssAngle = 90 + (grad.p.Rotation || 0);
+  return `linear-gradient(${cssAngle}deg, ${stops.join(", ")})`;
+}
+
+function cornerPx(n, w, h) {
+  const c = mod(n, "UICorner");
+  if (!c) return 0;
+  const r = c.p.CornerRadius || [0, 8];
+  return Math.min(udim(r, Math.min(w, h)), Math.min(w, h) / 2);
+}
+
+// ===== text =====
+const measurer = document.createElement("div");
+measurer.style.cssText = "position:absolute;left:-9999px;top:0;visibility:hidden;";
+document.body.appendChild(measurer);
+
+function escapeHtml(s) { return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
+function richToHtml(s) {
+  // keep &lt; etc as-is, convert Roblox rich text tags
+  let out = s.replace(/<br\s*\/?>/gi, "\n");
+  out = out.replace(/<font([^>]*)>/gi, (_, attrs) => {
+    let style = "";
+    const col = /color\s*=\s*["']?(#[0-9a-fA-F]{6}|rgb\([^)]*\))["']?/.exec(attrs);
+    if (col) style += `color:${col[1]};-webkit-text-fill-color:${col[1]};`;
+    const size = /size\s*=\s*["']?(\d+)["']?/.exec(attrs);
+    if (size) style += `font-size:${size[1]}px;`;
+    const tr = /transparency\s*=\s*["']?([\d.]+)["']?/.exec(attrs);
+    if (tr) style += `opacity:${1 - parseFloat(tr[1])};`;
+    return `<span style="${style}">`;
+  }).replace(/<\/font>/gi, "</span>");
+  out = out.replace(/<stroke[^>]*>/gi, "<span>").replace(/<\/stroke>/gi, "</span>");
+  out = out.replace(/<(\/?)(b|i|u|s)>/gi, "<$1$2>");
+  out = out.replace(/<uppercase>/gi, '<span style="text-transform:uppercase">').replace(/<\/uppercase>/gi, "</span>");
+  return out;
+}
+function textHtml(n) {
+  const t = n.c === "TextBox" && !n.p.Text ? (n.p.PlaceholderText || "") : (n.p.Text || "");
+  return n.p.RichText ? richToHtml(t) : escapeHtml(t);
+}
+function fontStyle(n, size) {
+  const f = FONTS[n.p.Font] || ["Montserrat", 600];
+  const lh = (n.p.LineHeight || 1) * size;
+  return `font-family:${f[0]},sans-serif,'Noto Color Emoji';font-weight:${f[1]};font-size:${size}px;line-height:${lh}px;`;
+}
+function measure(n, size, width, wrap) {
+  measurer.style.cssText = `position:absolute;left:-9999px;top:0;visibility:hidden;${fontStyle(n, size)}white-space:${wrap ? "pre-wrap" : "pre"};` +
+    (wrap ? `width:${width}px;overflow-wrap:break-word;` : "");
+  measurer.innerHTML = textHtml(n);
+  return [measurer.scrollWidth, measurer.scrollHeight];
+}
+function scaledSize(n, w, h) {
+  const tsc = mod(n, "UITextSizeConstraint");
+  const max = Math.min(100, tsc ? tsc.p.MaxTextSize || 100 : 100);
+  const min = tsc ? tsc.p.MinTextSize || 1 : 1;
+  let lo = 1, hi = Math.floor(max), best = 1;
+  while (lo <= hi) {
+    const mid = (lo + hi) >> 1;
+    const [mw, mh] = measure(n, mid, w, true);
+    if (mw <= w + 0.5 && mh <= h + 0.5) { best = mid; lo = mid + 1; } else hi = mid - 1;
+  }
+  return Math.max(min, best);
+}
+
+// ===== layout =====
+function resolveSize(n, pw, ph) {
+  const s = n.p.Size || [0, 100, 0, 100];
+  let w = udim([s[0], s[1]], pw), h = udim([s[2], s[3]], ph);
+  const ar = mod(n, "UIAspectRatioConstraint");
+  if (ar) {
+    const r = ar.p.AspectRatio || 1;
+    if (ar.p.DominantAxis === "Height" && ar.p.AspectType === "ScaleWithParentSize") w = h * r;
+    else if (w / Math.max(h, 1e-6) > r) w = h * r; else h = w / r;
+  }
+  const sc = mod(n, "UISizeConstraint");
+  if (sc) {
+    w = Math.max(sc.p.MinSize[0], Math.min(sc.p.MaxSize[0], w));
+    h = Math.max(sc.p.MinSize[1], Math.min(sc.p.MaxSize[1], h));
+  }
+  return [Math.max(0, w), Math.max(0, h)];
+}
+
+function paddingOf(n, w, h) {
+  const p = mod(n, "UIPadding");
+  if (!p) return [0, 0, 0, 0];
+  return [udim(p.p.PaddingLeft, w), udim(p.p.PaddingTop, h), udim(p.p.PaddingRight, w), udim(p.p.PaddingBottom, h)];
+}
+
+// Build node -> { el, w, h }. Parent positions it.
+function build(n, pw, ph, forced) {
+  let [w, h] = forced || resolveSize(n, pw, ph);
+  const auto = n.p.AutomaticSize || "None";
+  let res = buildAt(n, w, h);
+  if (auto !== "None" && !forced) {
+    const [pl, pt, pr, pb] = paddingOf(n, w, h);
+    let needW = w, needH = h;
+    if (res.extent) { needW = Math.max(w, res.extent[0] + pl + pr); needH = Math.max(h, res.extent[1] + pt + pb); }
+    if (isText(n)) {
+      const size = n.p.TextSize || 14;
+      const wrap = n.p.TextWrapped && (auto === "Y");
+      const [mw, mh] = measure(n, size, w - pl - pr, wrap);
+      needW = Math.max(needW, mw + pl + pr); needH = Math.max(needH, mh + pt + pb);
+    }
+    const nw = (auto === "X" || auto === "XY") ? needW : w;
+    const nh = (auto === "Y" || auto === "XY") ? needH : h;
+    if (nw !== w || nh !== h) { w = nw; h = nh; res = buildAt(n, w, h); }
+  }
+  return { el: res.el, w, h, node: n };
+}
+
+function buildAt(n, w, h) {
+  const el = document.createElement("div");
+  el.className = "el";
+  el.dataset.name = n.n;
+  el.style.width = w + "px";
+  el.style.height = h + "px";
+  const radius = cornerPx(n, w, h);
+  if (radius) el.style.borderRadius = radius + "px";
+
+  // background (+ gradient)
+  const bgT = n.p.BackgroundTransparency ?? 0;
+  const isGuiClass = GUI.has(n.c);
+  const grad = mod(n, "UIGradient");
+  const color = n.p.BackgroundColor3 || [1, 1, 1];
+  if (isGuiClass && bgT < 1 && n.c !== "ViewportFrame") {
+    const bg = document.createElement("div");
+    bg.className = "bg";
+    if (grad) {
+      const g = document.createElement("div");
+      g.className = "grad";
+      g.style.background = gradientCss(grad, color, 1 - bgT);
+      g.style.transform = `scale(${w / 100}, ${h / 100})`;
+      bg.appendChild(g);
+    } else {
+      bg.style.background = rgba(color, 1 - bgT);
+    }
+    el.appendChild(bg);
+  }
+  // strokes: Border strokes (and Contextual strokes on non-text objects) draw outside the box
+  const shadows = [];
+  for (const s of mods(n, "UIStroke")) {
+    if (s.p.Enabled === false) continue;
+    const mode = s.p.ApplyStrokeMode || "Contextual";
+    if (mode === "Border" || !isText(n)) {
+      const sg = mod(s, "UIGradient");
+      let c = s.p.Color || [0, 0, 0];
+      if (sg) c = sampleSeq(sg.p.Color, 0.5) || c;
+      shadows.push(`0 0 0 ${s.p.Thickness ?? 1}px ${rgba(c, 1 - (s.p.Transparency || 0))}`);
+    }
+  }
+  if (isGuiClass && (n.p.BorderSizePixel || 0) > 0 && bgT < 1 && !mod(n, "UICorner") && n.c !== "ViewportFrame") {
+    shadows.push(`0 0 0 ${n.p.BorderSizePixel}px ${rgba(n.p.BorderColor3 || [0.1, 0.16, 0.2], 1 - bgT)}`);
+  }
+  if (shadows.length) el.style.boxShadow = shadows.join(", ");
+
+  // image
+  if ((n.c === "ImageLabel" || n.c === "ImageButton") && n.p.Image) {
+    const img = document.createElement("div");
+    img.className = "bg";
+    img.style.borderRadius = "inherit";
+    const src = ASSETS[n.p.Image];
+    const alpha = 1 - (n.p.ImageTransparency || 0);
+    if (src) {
+      const off = n.p.ImageRectOffset || [0, 0], size = n.p.ImageRectSize || [0, 0];
+      if (size[0] > 0) {
+        const sx = w / size[0], sy = h / size[1];
+        const fit = n.p.ScaleType === "Fit" ? Math.min(sx, sy) : null;
+        const ax = fit ? fit : sx, ay = fit ? fit : sy;
+        const dx = fit ? (w - size[0] * fit) / 2 : 0, dy = fit ? (h - size[1] * fit) / 2 : 0;
+        // draw only the cropped rect, placed where Fit puts it
+        img.style.left = `${dx}px`;
+        img.style.top = `${dy}px`;
+        img.style.width = `${size[0] * ax}px`;
+        img.style.height = `${size[1] * ay}px`;
+        img.style.borderRadius = "0";
+        img.style.right = "auto";
+        img.style.bottom = "auto";
+        img.style.backgroundImage = `url(${src.url})`;
+        img.style.backgroundSize = `${src.w * ax}px ${src.h * ay}px`;
+        img.style.backgroundPosition = `${-off[0] * ax}px ${-off[1] * ay}px`;
+        img.style.backgroundRepeat = "no-repeat";
+      } else {
+        img.style.background = `url(${src.url}) center / ${n.p.ScaleType === "Fit" ? "contain" : "100% 100%"} no-repeat`;
+      }
+      const ic = n.p.ImageColor3 || [1, 1, 1];
+      if (ic[0] < 0.99 || ic[1] < 0.99 || ic[2] < 0.99) {
+        const lum = (ic[0] + ic[1] + ic[2]) / 3;
+        img.style.filter = `brightness(${lum})`;
+      }
+    } else {
+      img.style.border = "2px dashed rgba(255,0,255,.7)";
+    }
+    img.style.opacity = alpha;
+    el.appendChild(img);
+  }
+  if (n.c === "ViewportFrame") {
+    // a pre-rendered picture of the model ("model:<name>" in the assets file, e.g. from
+    // tools/blender/pet_previews.py --ui), else a placeholder bubble with its name
+    const names = (n.model || "3D").split("/").filter(x => x !== "WorldModel");
+    const name = names[0] || "3D";
+    const pic = names.map(x => ASSETS["model:" + x]).find(Boolean);
+    const vp = document.createElement("div");
+    if (pic) {
+      vp.style.cssText = `position:absolute;inset:0;background:url(${pic.url}) center / contain no-repeat;opacity:${1 - (n.p.ImageTransparency || 0)};`;
+    } else {
+      vp.className = "vp";
+      vp.textContent = name.slice(0, 14);
+    }
+    el.appendChild(vp);
+  }
+
+  // text
+  if (isText(n)) {
+    const [pl, pt, pr, pb] = paddingOf(n, w, h);
+    const iw = w - pl - pr, ih = h - pt - pb;
+    const size = n.p.TextScaled ? scaledSize(n, iw, ih) : (n.p.TextSize || 14);
+    const wrap = n.p.TextWrapped || n.p.TextScaled;
+    const xa = { Left: "flex-start", Center: "center", Right: "flex-end" }[n.p.TextXAlignment || "Center"];
+    const ya = { Top: "flex-start", Center: "center", Bottom: "flex-end" }[n.p.TextYAlignment || "Center"];
+    const ta = { Left: "left", Center: "center", Right: "right" }[n.p.TextXAlignment || "Center"];
+    const isPlaceholder = n.c === "TextBox" && !n.p.Text;
+    const tc = isPlaceholder ? (n.p.PlaceholderColor3 || [0.7, 0.7, 0.7]) : (n.p.TextColor3 || [0, 0, 0]);
+    const tAlpha = 1 - (n.p.TextTransparency || 0);
+    const base = `padding:${pt}px ${pr}px ${pb}px ${pl}px;justify-content:${xa};align-items:${ya};text-align:${ta};`;
+    const inner = `<span class="line" style="${fontStyle(n, size)}white-space:${wrap ? "pre-wrap" : "pre"};${wrap ? "overflow-wrap:break-word;" : ""}">${textHtml(n)}</span>`;
+    const strokes = mods(n, "UIStroke").filter(s => s.p.Enabled !== false && (s.p.ApplyStrokeMode || "Contextual") === "Contextual");
+    const legacy = (n.p.TextStrokeTransparency ?? 1) < 1;
+    const addLayer = (css, opacity) => {
+      const t = document.createElement("div");
+      t.className = "txt";
+      t.style.cssText += base + css;
+      t.style.opacity = opacity;
+      t.innerHTML = inner;
+      el.appendChild(t);
+    };
+    for (const s of strokes) {
+      const th = s.p.Thickness ?? 1;
+      const sc = s.p.Color || [0, 0, 0];
+      addLayer(`color:${rgba(sc)};-webkit-text-fill-color:${rgba(sc)};-webkit-text-stroke:${th * 2}px ${rgba(sc)};`, tAlpha * (1 - (s.p.Transparency || 0)));
+    }
+    if (legacy && !strokes.length) {
+      const sc = n.p.TextStrokeColor3 || [0, 0, 0];
+      addLayer(`color:${rgba(sc)};-webkit-text-stroke:2px ${rgba(sc)};`, tAlpha * (1 - n.p.TextStrokeTransparency));
+    }
+    if (grad && bgT >= 1) {
+      // gradient on a transparent label colours the text
+      const g = gradientCss(grad, tc, 1).replace(/^linear-gradient\((\-?[\d.]+)deg/, "linear-gradient($1deg");
+      addLayer(`background:${g};-webkit-background-clip:text;background-clip:text;color:transparent;-webkit-text-fill-color:transparent;`, tAlpha);
+      // span backgrounds need the clip on the span itself
+      const last = el.lastChild.querySelector(".line");
+      last.style.background = g; last.style.webkitBackgroundClip = "text"; last.style.backgroundClip = "text";
+    } else {
+      addLayer(`color:${rgba(tc)};`, tAlpha);
+    }
+  }
+
+  // children
+  const guiKids = kidsOf(n).filter(k => GUI.has(k.c));
+  let extent = null;
+  if (guiKids.length && n.c !== "ViewportFrame") {
+    const box = document.createElement("div");
+    box.className = "kids" + ((n.p.ClipsDescendants || n.c === "ScrollingFrame") ? " clip" : "");
+    const [pl, pt, pr, pb] = paddingOf(n, w, h);
+    const cw = w - pl - pr, ch = h - pt - pb;
+    const placed = layoutChildren(n, guiKids, cw, ch);
+    let maxX = 0, maxY = 0;
+    for (const p of placed) {
+      p.el.style.left = (pl + p.x) + "px";
+      p.el.style.top = (pt + p.y) + "px";
+      box.appendChild(p.el);
+      maxX = Math.max(maxX, p.x + p.w); maxY = Math.max(maxY, p.y + p.h);
+    }
+    extent = [maxX, maxY];
+    if (n.c === "ScrollingFrame" && (n.p.ScrollBarThickness || 0) > 0 && maxY > ch + 1) {
+      const bar = document.createElement("div");
+      bar.style.cssText = `position:absolute;right:2px;top:4px;width:${n.p.ScrollBarThickness}px;height:${Math.max(20, h * h / (maxY + pt + pb)) - 8}px;border-radius:4px;background:${rgba(n.p.ScrollBarImageColor3 || [0.5, 0.5, 0.5], 0.9)};z-index:999;`;
+      box.appendChild(bar);
+    }
+    el.appendChild(box);
+  }
+
+  // transforms: rotation around centre, UIScale around the anchor point
+  const tf = [];
+  if (n.p.Rotation) tf.push(`rotate(${n.p.Rotation}deg)`);
+  const us = mod(n, "UIScale");
+  if (us && us.p.Scale !== undefined && Math.abs(us.p.Scale - 1) > 1e-3) {
+    tf.push(`scale(${us.p.Scale})`);
+    const ap = n.p.AnchorPoint || [0, 0];
+    el.style.transformOrigin = `${ap[0] * 100}% ${ap[1] * 100}%`;
+  }
+  if (tf.length) el.style.transform = tf.join(" ");
+  if (n.c === "CanvasGroup") el.style.opacity = 1 - (n.p.GroupTransparency || 0);
+  el.style.zIndex = n.p.ZIndex ?? 1;
+  return { el, extent };
+}
+
+function layoutChildren(parent, kids, cw, ch) {
+  const list = mod(parent, "UIListLayout");
+  const grid = mod(parent, "UIGridLayout");
+  const out = [];
+  const order = (arr) => arr.map((k, i) => [k, i]).sort((a, b) => ((a[0].p.LayoutOrder || 0) - (b[0].p.LayoutOrder || 0)) || (a[1] - b[1])).map(x => x[0]);
+  if (grid) {
+    const cell = grid.p.CellSize || [0, 100, 0, 100], pad = grid.p.CellPadding || [0, 5, 0, 5];
+    const cwid = udim([cell[0], cell[1]], cw), chei = udim([cell[2], cell[3]], ch);
+    const px = udim([pad[0], pad[1]], cw), py = udim([pad[2], pad[3]], ch);
+    const horiz = (grid.p.FillDirection || "Horizontal") === "Horizontal";
+    let per = horiz ? Math.max(1, Math.floor((cw + px) / (cwid + px))) : Math.max(1, Math.floor((ch + py) / (chei + py)));
+    if (grid.p.FillDirectionMaxCells > 0) per = Math.min(per, grid.p.FillDirectionMaxCells);
+    const items = order(kids);
+    const n = items.length;
+    const cols = horiz ? Math.min(per, n) : Math.ceil(n / per);
+    const rows = horiz ? Math.ceil(n / per) : Math.min(per, n);
+    const bw = cols * cwid + Math.max(0, cols - 1) * px, bh = rows * chei + Math.max(0, rows - 1) * py;
+    const ox = { Left: 0, Center: (cw - bw) / 2, Right: cw - bw }[grid.p.HorizontalAlignment || "Left"];
+    const oy = { Top: 0, Center: (ch - bh) / 2, Bottom: ch - bh }[grid.p.VerticalAlignment || "Top"];
+    items.forEach((k, i) => {
+      const col = horiz ? i % per : Math.floor(i / per), row = horiz ? Math.floor(i / per) : i % per;
+      const b = build(k, cw, ch, [cwid, chei]);
+      out.push({ el: b.el, x: ox + col * (cwid + px), y: oy + row * (chei + py), w: cwid, h: chei });
+    });
+    return out;
+  }
+  if (list) {
+    const vertical = (list.p.FillDirection || "Vertical") === "Vertical";
+    const gap = udim(list.p.Padding || [0, 0], vertical ? ch : cw);
+    const items = order(kids).map(k => build(k, cw, ch));
+    const total = items.reduce((s, b) => s + (vertical ? b.h : b.w), 0) + Math.max(0, items.length - 1) * gap;
+    const ha = list.p.HorizontalAlignment || "Left", va = list.p.VerticalAlignment || "Top";
+    let cursor = vertical ? { Top: 0, Center: (ch - total) / 2, Bottom: ch - total }[va] : { Left: 0, Center: (cw - total) / 2, Right: cw - total }[ha];
+    for (const b of items) {
+      let x, y;
+      if (vertical) { y = cursor; x = { Left: 0, Center: (cw - b.w) / 2, Right: cw - b.w }[ha]; cursor += b.h + gap; }
+      else { x = cursor; y = { Top: 0, Center: (ch - b.h) / 2, Bottom: ch - b.h }[va]; cursor += b.w + gap; }
+      out.push({ el: b.el, x, y, w: b.w, h: b.h });
+    }
+    return out;
+  }
+  for (const k of kids) {
+    const b = build(k, cw, ch);
+    const pos = k.p.Position || [0, 0, 0, 0], ap = k.p.AnchorPoint || [0, 0];
+    const x = udim([pos[0], pos[1]], cw) - ap[0] * b.w, y = udim([pos[2], pos[3]], ch) - ap[1] * b.h;
+    out.push({ el: b.el, x, y, w: b.w, h: b.h });
+  }
+  return out;
+}
+
+function renderShot(shot, assets) {
+  ASSETS = assets || {};
+  const ui = document.getElementById("ui");
+  ui.innerHTML = "";
+  for (const g of shot.guis) {
+    const layer = document.createElement("div");
+    layer.className = "el";
+    layer.style.cssText = `position:absolute;left:0;top:0;width:${shot.w}px;height:${shot.h}px;z-index:${(g.p.DisplayOrder || 0) + 1};`;
+    const scale = mod(g, "UIScale");
+    const s = scale ? scale.p.Scale : 1;
+    const placed = layoutChildren(g, kidsOf(g).filter(k => GUI.has(k.c)), shot.w / s, shot.h / s);
+    const inner = document.createElement("div");
+    inner.style.cssText = `position:absolute;left:0;top:0;width:${shot.w / s}px;height:${shot.h / s}px;transform:scale(${s});transform-origin:0 0;`;
+    for (const p of placed) { p.el.style.left = p.x + "px"; p.el.style.top = p.y + "px"; inner.appendChild(p.el); }
+    layer.appendChild(inner);
+    ui.appendChild(layer);
+  }
+}
+
+// a simple blocky backdrop standing in for the 3D world
+(function world() {
+  const w = document.getElementById("world");
+  const add = (cls, css) => { const d = document.createElement("div"); d.className = cls; d.style.cssText = css; w.appendChild(d); };
+  add("hill", "left:-200px;top:330px;width:900px;height:220px;");
+  add("hill", "left:600px;top:320px;width:1000px;height:240px;background:#56a93f");
+  for (const [x, y, s] of [[90, 250, 1.2], [300, 290, 0.8], [980, 240, 1.3], [1150, 300, 0.9], [760, 300, 0.7]]) {
+    add("trunk", `left:${x + 34 * s}px;top:${y + 90 * s}px;width:${16 * s}px;height:${70 * s}px;`);
+    add("tree", `left:${x}px;top:${y}px;width:${84 * s}px;height:${110 * s}px;`);
+  }
+  add("block", "left:520px;top:420px;width:240px;height:60px;");
+  add("block", "left:120px;top:560px;width:180px;height:90px;background:#c9a071");
+})();
+window.renderShot = renderShot;
+</script>
+</body>
+</html>
