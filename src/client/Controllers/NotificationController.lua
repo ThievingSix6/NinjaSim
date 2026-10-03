@@ -1,12 +1,15 @@
 --[[
 	NotificationController: stacked toasts under the XP bar, big centre banners for
-	important moments (zone entered, boss spawned, unlocks), and callouts: a
-	translucent glass card in a clean sans font for boss kills and hat loot, which
-	reads over the world without hiding it.
+	important moments (zone entered, boss spawned in your area, unlocks), callouts (a
+	translucent glass card for big personal moments), side notes (a small line of
+	text at the right edge that fades away: item drops, yours and other players') and
+	chat lines (system messages in the Roblox chat: boss kills, in red).
 ]]
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TextService = game:GetService("TextService")
+local TextChatService = game:GetService("TextChatService")
+local StarterGui = game:GetService("StarterGui")
 
 local Net = require(ReplicatedStorage.Shared.Net)
 
@@ -14,6 +17,7 @@ local NotificationController = {}
 
 local Kit, Theme
 local stack: Frame
+local sideNotes: Frame
 local bannerHolder: Frame
 local activeBanner: Frame? = nil
 
@@ -213,6 +217,63 @@ function NotificationController:Callout(title: string, subtitle: string?, color:
 	end
 end
 
+-- A small line of text at the right edge of the screen: slides in, holds a moment,
+-- fades away. For item drops (yours and other players').
+function NotificationController:Side(text: string, color: Color3?, seconds: number?)
+	local label = Kit.New("TextLabel", {
+		BackgroundTransparency = 1, Text = text, Font = Theme.FontCleanBody, TextSize = 17,
+		TextColor3 = color or Theme.Text, TextXAlignment = Enum.TextXAlignment.Right, TextTransparency = 1,
+		AutomaticSize = Enum.AutomaticSize.X, Size = UDim2.fromOffset(0, 22), Name = "SideNote", Parent = sideNotes,
+	})
+	label.LayoutOrder = -math.floor(os.clock() * 100)
+	local shadow = Kit.New("UIStroke", { Color = Color3.new(0, 0, 0), Thickness = 1.2, Transparency = 1, Parent = label })
+	local pad = Kit.New("UIPadding", { PaddingRight = UDim.new(0, -30), Parent = label })
+	Kit.Tween(label, { TextTransparency = 0 }, 0.25)
+	Kit.Tween(shadow, { Transparency = 0.45 }, 0.25)
+	Kit.Tween(pad, { PaddingRight = UDim.new(0, 0) }, 0.25)
+	task.delay(seconds or 3.5, function()
+		Kit.Tween(label, { TextTransparency = 1 }, 0.6)
+		Kit.Tween(shadow, { Transparency = 1 }, 0.6)
+		task.wait(0.65)
+		label:Destroy()
+	end)
+	-- keep the column short
+	local notes = {}
+	for _, child in ipairs(sideNotes:GetChildren()) do
+		if child:IsA("TextLabel") then
+			table.insert(notes, child)
+		end
+	end
+	if #notes > 6 then
+		table.sort(notes, function(a, b)
+			return a.LayoutOrder > b.LayoutOrder
+		end)
+		notes[1]:Destroy()
+	end
+end
+
+local function escapeRich(text: string): string
+	return (string.gsub(string.gsub(string.gsub(text, "&", "&amp;"), "<", "&lt;"), ">", "&gt;"))
+end
+
+-- A system message in the Roblox chat window, in `color` (only this player sees it).
+function NotificationController:Chat(text: string, color: Color3?)
+	local c = color or Theme.Text
+	local ok = pcall(function()
+		assert(TextChatService.ChatVersion == Enum.ChatVersion.TextChatService, "legacy chat")
+		local channels = TextChatService:FindFirstChild("TextChannels")
+		local general = channels and channels:FindFirstChild("RBXGeneral")
+		assert(general, "no general channel")
+		;(general :: TextChannel):DisplaySystemMessage(string.format('<font color="#%s"><b>%s</b></font>', c:ToHex(), escapeRich(text)))
+	end)
+	if not ok then
+		-- the legacy chat
+		pcall(function()
+			StarterGui:SetCore("ChatMakeSystemMessage", { Text = text, Color = c, Font = Enum.Font.GothamBold })
+		end)
+	end
+end
+
 function NotificationController:Start(controllers)
 	Kit, Theme = controllers.Kit, controllers.Theme
 	for emoji, name in pairs(Kit.IconAliases) do
@@ -229,6 +290,11 @@ function NotificationController:Start(controllers)
 		Position = UDim2.new(0.5, 0, 0.16, 0), AnchorPoint = Vector2.new(0.5, 0), Name = "Callouts", Parent = root,
 	})
 	Kit.List(Enum.FillDirection.Vertical, 8, Enum.HorizontalAlignment.Center).Parent = callouts
+	sideNotes = Kit.New("Frame", {
+		BackgroundTransparency = 1, Size = UDim2.fromOffset(520, 200),
+		Position = UDim2.new(1, -24, 0.4, 0), AnchorPoint = Vector2.new(1, 0), Name = "SideNotes", Parent = root,
+	})
+	Kit.List(Enum.FillDirection.Vertical, 2, Enum.HorizontalAlignment.Right).Parent = sideNotes
 	bannerHolder = Kit.New("Frame", {
 		BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 140),
 		Position = UDim2.fromScale(0.5, 0.42), AnchorPoint = Vector2.new(0.5, 0.5), Name = "Banners", Parent = root,
@@ -241,7 +307,9 @@ function NotificationController:Start(controllers)
 	end)
 
 	Net.Event("Notify").OnClientEvent:Connect(function(info)
-		if info.Big then
+		if info.Side then
+			self:Side(info.Text, info.Color)
+		elseif info.Big then
 			self:Banner(info.Text, nil, info.Color, 2.4)
 		else
 			self:Toast(info.Text, info.Color, info.Icon)

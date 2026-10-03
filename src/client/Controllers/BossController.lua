@@ -16,7 +16,6 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Net = require(ReplicatedStorage.Shared.Net)
 local Format = require(ReplicatedStorage.Shared.Util.Format)
-local Zones = require(ReplicatedStorage.Shared.Config.Zones)
 
 local BossController = {}
 
@@ -283,27 +282,14 @@ function BossController:Start(c)
 	Net.Event("BossEvent").OnClientEvent:Connect(function(info)
 		local color = info.Color or Theme.Accent
 		if info.Type == "Spawn" then
-			local data = c.DataController:Get()
-			local here = data and data.LastZone == info.ZoneId
-			if here then
-				c.SoundController:Play("BossSpawn")
-				c.NotificationController:Banner("BOSS APPEARED", info.Name .. " in " .. info.Zone, color, 3)
-				c.CameraController:Shake(0.3)
-			else
-				c.NotificationController:Toast("👹 " .. info.Name .. " appeared in " .. info.Zone, color)
-			end
-			if c.HUD then
-				c.HUD:SetBadge("Areas", true)
-			end
+			-- the server only tells the players in the boss's area
+			c.SoundController:Play("BossSpawn")
+			c.NotificationController:Banner("BOSS APPEARED", info.Name .. " in " .. info.Zone, color, 3)
+			c.CameraController:Shake(0.3)
 		elseif info.Type == "Defeated" then
-			local by = if info.By and info.By ~= "" then "Defeated by " .. info.By else "Defeated!"
-			local data = c.DataController:Get()
-			local zone = data and Zones.Get(data.LastZone)
-			if zone and zone.Name == info.Zone then
-				c.NotificationController:Callout(info.Name .. " has fallen", by, Theme.Gold, "Trophy", 4)
-			else
-				c.NotificationController:Callout(info.Name .. " was defeated", info.Zone, Theme.Gold, "Trophy", 3)
-			end
+			-- a red line in the chat for everyone
+			local by = if info.By and info.By ~= "" then " by " .. info.By else ""
+			c.NotificationController:Chat(string.format("%s was defeated%s in %s!", info.Name, by, info.Zone), rgb(255, 70, 70))
 		elseif info.Type == "Enrage" then
 			c.NotificationController:Banner("ENRAGED!", info.Name .. " grows stronger", rgb(255, 60, 40), 1.8)
 			c.EffectsController:Vignette(rgb(255, 40, 20), 0.5, 1)

@@ -119,7 +119,7 @@ function LootService:Collect(player: Player, id: number): (boolean, string?)
 	if rarity.Index >= 4 then
 		for _, other in ipairs(Players:GetPlayers()) do
 			if other ~= player then
-				Net.Event("Notify"):FireClient(other, { Text = player.DisplayName .. " found " .. Hats.Name(hat) .. "!", Color = rarity.Color, Icon = "Crown" })
+				Net.Event("Notify"):FireClient(other, { Text = player.DisplayName .. " found " .. Hats.Name(hat), Color = rarity.Color, Side = true })
 			end
 		end
 	end
@@ -140,9 +140,7 @@ function LootService:CollectCharm(player: Player, id: number, charm): (boolean, 
 	if rarity.Index >= 3 or charm.S then
 		for _, other in ipairs(Players:GetPlayers()) do
 			if other ~= player then
-				Net.Event("Notify"):FireClient(other, {
-					Text = player.DisplayName .. " found " .. Charms.Name(charm) .. "!", Color = rarity.Color, Icon = "Sparkle", Big = charm.U ~= nil,
-				})
+				Net.Event("Notify"):FireClient(other, { Text = player.DisplayName .. " found " .. Charms.Name(charm), Color = rarity.Color, Side = true })
 			end
 		end
 	end

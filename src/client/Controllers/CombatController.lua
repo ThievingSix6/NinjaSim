@@ -10,6 +10,10 @@
 	shows this client's copy of the pool, the server keeps the real one), a press
 	during a swing is buffered and plays as soon as the move allows, and the player
 	walks slowly while a swing plays (MovementController reads IsAttacking).
+
+	Fluid combat: a dodge or a jump cancels the swing (CancelSwing). Cancelled in
+	its wind-up, the server drops the swing too (it resolves hits when the blade lands)
+	and the combo starts over; cancelled in its recovery, the hits already landed.
 ]]
 
 local Players = game:GetService("Players")
@@ -38,6 +42,8 @@ local holding = false
 local bufferedUntil = 0 -- a press during a swing plays when the move allows, until then
 local attackingUntil = 0 -- the player is committed to the current swing until then
 local BUFFER = 0.45
+local swingToken = 0 -- bumps on every swing and cancel, so a cancelled swing's delayed effects stay quiet
+local ignoreResultsUntil = 0 -- a result for a swing cancelled in its wind-up can still be in flight
 local streak = 0
 local lastKill = 0
 
@@ -106,6 +112,34 @@ end
 -- Called by DodgeController: a roll cancels any buffered swing.
 function CombatController:ClearBuffer()
 	bufferedUntil = 0
+end
+
+-- Stops the current swing (dodge or jump). In its wind-up the swing is cancelled on
+-- the server too: `tellServer` false when the caller's own event already does that
+-- (a dodge). The next swing may start as soon as the dodge or jump allows.
+-- Returns true if a swing was cut short.
+function CombatController:CancelSwing(tellServer: boolean?): boolean
+	local now = os.clock()
+	if now >= attackingUntil and now >= hitMoment then
+		bufferedUntil = 0
+		return false
+	end
+	local inWindup = now < hitMoment
+	attackingUntil, hitMoment, bufferedUntil = 0, 0, 0
+	nextSwing = now
+	swingToken += 1
+	if inWindup then
+		combo = 0 -- the server starts the chain over as well
+		ignoreResultsUntil = now + 0.5
+		if tellServer ~= false then
+			Net.Event("CancelAttack"):FireServer()
+		end
+	end
+	local character = player.Character
+	if character then
+		controllers.AnimationController:CancelSwing(character)
+	end
+	return true
 end
 
 function CombatController:Swing(buffer: boolean?)
@@ -184,14 +218,18 @@ function CombatController:Swing(buffer: boolean?)
 
 	local character = player.Character :: Model
 	controllers.AnimationController:PlaySwing(character, combo, duration, { Direction = look, Studs = studs })
+	swingToken += 1
+	local token = swingToken
 	task.delay(move.Trail[1] * duration, function()
-		controllers.SoundController:Play(if move.Finisher then "Finisher" else "Swing")
+		if token == swingToken then
+			controllers.SoundController:Play(if move.Finisher then "Finisher" else "Swing")
+		end
 	end)
 	if move.Finisher then
 		-- the finisher always lands with a ground slam, hit or miss
 		task.delay(move.HitAt * duration, function()
 			local r = getRoot()
-			if not r then
+			if not r or token ~= swingToken then
 				return
 			end
 			local fwd = Vector3.new(r.CFrame.LookVector.X, 0, r.CFrame.LookVector.Z).Unit
@@ -227,6 +265,9 @@ end
 -- The server answers as soon as the swing starts; show the hits when the blade
 -- actually lands in the animation.
 local function onCombatResult(result)
+	if os.clock() < ignoreResultsUntil then
+		return
+	end
 	local wait = hitMoment - os.clock()
 	if wait > 0.01 then
 		task.delay(wait, showHits, result)

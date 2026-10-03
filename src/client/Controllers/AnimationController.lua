@@ -178,6 +178,17 @@ function AnimationController:PlaySwing(character: Model, index: number, duration
 	end
 end
 
+-- Cuts the character's current swing short (a dodge or jump): no more lunge, and the
+-- next step ends it (trails out, pose released). A roll's own pose is left alone.
+function AnimationController:CancelSwing(character: Model)
+	local s = swings[character]
+	if not s or s.Move.Name == "Roll" or s.Move.Name == "Backstep" then
+		return
+	end
+	s.Lunge = nil
+	s.Elapsed = math.max(s.Elapsed, s.Duration)
+end
+
 -- Double jump: a tucked front flip (Root x - turns the body forward).
 local FLIP = {
 	Name = "Flip",

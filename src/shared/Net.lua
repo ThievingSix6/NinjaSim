@@ -38,6 +38,7 @@ Net.Events = {
 	-- client -> server
 	"Attack",
 	"Dodge", -- the local player rolled (CombatService opens the i-frames)
+	"CancelAttack", -- the local player jumped out of a swing's wind-up (CombatService cancels it)
 }
 
 Net.Functions = {

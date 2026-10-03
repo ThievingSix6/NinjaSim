@@ -248,7 +248,8 @@ function BossService:SpawnBoss(zone)
 	boss.SummonStage = 0
 	boss.Enraged = false
 	self.Active[zone.Id] = boss
-	for _, player in ipairs(Players:GetPlayers()) do
+	-- only the players in that area hear about it
+	for _, player in ipairs(services.ZoneService.PlayersIn[zone.Id] or {}) do
 		Net.Event("BossEvent"):FireClient(player, {
 			Type = "Spawn", Name = boss.Def.Name, Zone = zone.Name, ZoneId = zone.Id, Color = boss.Def.Colors.Accent,
 		})

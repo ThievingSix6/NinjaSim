@@ -1,6 +1,7 @@
 --[[
 	MenuManager: owns every menu window. Menus are built lazily the first time
-	they open, only one is open at a time, and Esc / gamepad B closes it.
+	they open, only one is open at a time, and the X button, Esc or gamepad B closes it
+	(clicking outside or on empty space doesn't).
 
 	A menu module returns { Build = function(ctx) -> menu } where menu has:
 	  Window   the Kit.Window frame
@@ -145,9 +146,8 @@ function MenuManager:Start(c)
 		Name = "Dim", Text = "", AutoButtonColor = false, BackgroundColor3 = Color3.new(0, 0, 0),
 		BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1), Visible = false, Parent = root,
 	})
-	dim.Activated:Connect(function()
-		self:Close()
-	end)
+	-- the backdrop only catches clicks (so they don't swing the sword); it doesn't close
+	-- the menu: clicks on a window's empty space land here too. X, Esc and B close it.
 	blur = Instance.new("BlurEffect")
 	blur.Name = "MenuBlur"
 	blur.Size = 0

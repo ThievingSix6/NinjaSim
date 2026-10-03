@@ -713,6 +713,110 @@ return function(E)
 		end
 	end)
 
+	step("fluid combat", function()
+		local CC = E.cm("Controllers.CombatController")
+		local DodgeC = E.cm("Controllers.DodgeController")
+		local CS = E.sm("CombatService")
+		local ES = E.sm("EnemyService")
+		local Net = E.shared("Net")
+		local humanoid = player.Character:FindFirstChildOfClass("Humanoid")
+		local root = player.Character.HumanoidRootPart
+		local results = 0
+		local conn = Net.Event("CombatResult").OnClientEvent:Connect(function()
+			results += 1
+		end)
+		local function target()
+			for _, e in pairs(ES.All) do
+				if not e.Dead and not e.IsBoss then
+					e.MaxHealth, e.Health = 1e12, 1e12
+					E.sm("ZoneService"):MarkTeleported(player)
+					-- stand on +X looking -X (Lune's lookAt mirrors Roblox's in Z)
+					root.CFrame = CFrame.new(e.Root.Position + Vector3.new(4, 0, 0)) * CFrame.Angles(0, math.pi / 2, 0)
+					return e
+				end
+			end
+			return nil
+		end
+		local function rested()
+			task.wait(1.2)
+			freshStamina()
+		end
+		-- 1) an uncancelled swing lands
+		local enemy = target()
+		if not enemy then
+			report("scenario", "no enemy for the fluid combat test")
+			conn:Disconnect()
+			return
+		end
+		rested()
+		target()
+		local hp = enemy.Health
+		CC:Swing()
+		task.wait(0.9)
+		print("plain swing: hits", results, "damage", hp - enemy.Health)
+		if results == 0 then
+			report("scenario", "a plain swing hit nothing")
+		end
+		-- 2) dodging in the wind-up cancels it: no damage, the roll still happens
+		rested()
+		target()
+		E.signalFor(humanoid, "StateChanged"):Fire(E.roblox.Enum.HumanoidStateType.Running, E.roblox.Enum.HumanoidStateType.Landed)
+		hp = enemy.Health
+		results = 0
+		CC:Swing()
+		task.wait(0.03)
+		local rolled = DodgeC:Dodge()
+		task.wait(0.9)
+		print("swing then dodge in the wind-up: rolled", rolled, "hits", results, "damage", hp - enemy.Health)
+		if not rolled then
+			report("scenario", "could not dodge out of a swing's wind-up")
+		elseif results > 0 or enemy.Health < hp then
+			report("scenario", "a swing cancelled by a dodge still dealt damage")
+		end
+		-- 3) jumping in the wind-up cancels it too
+		rested()
+		target()
+		hp = enemy.Health
+		results = 0
+		CC:Swing()
+		task.wait(0.03)
+		E.signalFor(humanoid, "StateChanged"):Fire(E.roblox.Enum.HumanoidStateType.Running, E.roblox.Enum.HumanoidStateType.Jumping)
+		task.wait(0.9)
+		print("swing then jump in the wind-up: hits", results, "damage", hp - enemy.Health, "| attacking", CC:IsAttacking())
+		if results > 0 or enemy.Health < hp then
+			report("scenario", "a swing cancelled by a jump still dealt damage")
+		end
+		-- 4) right after a cancel a new swing starts straight away
+		rested()
+		target()
+		results = 0
+		CC:Swing()
+		task.wait(0.03)
+		CC:CancelSwing(true)
+		task.wait(0.05)
+		CC:Swing()
+		task.wait(0.9)
+		print("cancel then swing again at once: hits", results)
+		if results == 0 then
+			report("scenario", "could not swing again right after a cancel")
+		end
+		conn:Disconnect()
+		-- 5) clicking a menu's backdrop (or empty space) leaves it open
+		local MM = E.cm("UI.MenuManager")
+		MM:Open("Shop")
+		task.wait(0.4)
+		local dim = player.PlayerGui:FindFirstChild("Dim", true)
+		if dim then
+			E.signalFor(dim, "Activated"):Fire()
+		end
+		task.wait(0.3)
+		print("backdrop clicked: shop still open", MM:IsOpen("Shop"))
+		if not MM:IsOpen("Shop") then
+			report("scenario", "clicking the backdrop closed the menu")
+		end
+		MM:Close()
+	end)
+
 	step("suits + mastery", function()
 		local DC = E.cm("Controllers.DataController")
 		local UC = E.cm("Controllers.UltimateController")
@@ -2562,6 +2666,57 @@ return function(E)
 		E.cm("UI.MenuManager"):Open("Rebirth")
 		task.wait(0.5)
 		E.cm("UI.MenuManager"):Close()
+	end)
+
+	step("notifications", function()
+		local NC = E.cm("Controllers.NotificationController")
+		local BS = E.sm("BossService")
+		local Zones = E.shared("Config.Zones")
+		local seen = { Chat = {}, Side = {}, Banner = {} }
+		local originals = {}
+		for _, name in ipairs({ "Chat", "Side", "Banner" }) do
+			originals[name] = NC[name]
+			NC[name] = function(self, text, ...)
+				table.insert(seen[name], text)
+				return originals[name](self, text, ...)
+			end
+		end
+		-- a boss in another area: no banner here
+		local far = Zones.Get("bamboo")
+		local active = BS.Active[far.Id]
+		if not active then
+			BS:SpawnBoss(far)
+		end
+		task.wait(0.5)
+		print("boss spawned elsewhere: banners", #seen.Banner)
+		if #seen.Banner > 0 and not active then
+			report("scenario", "a boss in another area showed a banner here")
+		end
+		-- defeating it: a red line in the chat
+		local boss = BS.Active[far.Id]
+		if boss then
+			E.sm("EnemyService"):Kill(boss, player)
+		end
+		task.wait(0.5)
+		print("boss defeated: chat lines", #seen.Chat, seen.Chat[1])
+		if #seen.Chat == 0 then
+			report("scenario", "a boss kill wrote nothing in the chat")
+		end
+		-- a drop: a side note, not a callout
+		local Hats = E.shared("Config.Hats")
+		local root = player.Character.HumanoidRootPart
+		local id = E.sm("LootService"):Drop(player, root.Position + Vector3.new(2, -2.5, 0), Hats.Roll(1, 10, 0, false, nil, "Legendary"))
+		task.wait(0.3)
+		E.cm("Controllers.DataController"):Request("PickupHat", id)
+		task.wait(0.5)
+		local notes = player.PlayerGui:FindFirstChild("SideNotes", true)
+		print("hat picked up: side notes", #seen.Side, seen.Side[1], "| on screen", notes and #notes:GetChildren())
+		if #seen.Side == 0 then
+			report("scenario", "a hat pickup showed no side note")
+		end
+		for name, fn in pairs(originals) do
+			NC[name] = fn
+		end
 	end)
 
 	step("boss", function()

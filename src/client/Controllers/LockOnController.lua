@@ -1,9 +1,10 @@
 --[[
 	LockOnController: Souls-style target lock.
 
-	Toggle with the middle mouse button or L on a keyboard, R3 (right stick click) on a
-	gamepad, or the LOCK button on touch screens. It picks the nearest living enemy in
-	front of the camera (within Range studs; anything in Range if nothing is in front).
+	Toggle with the middle mouse button or L on a keyboard, Square on a PlayStation pad
+	(X on Xbox; R3 belongs to the camera), or the LOCK button on touch screens. It picks
+	the nearest living enemy in front of the camera (within Range studs; anything in
+	Range if nothing is in front).
 	While locked:
 	  - the camera swings behind you to keep the target framed (CameraController calls
 	    Apply from its render step, after the default camera, so shake still plays and
@@ -214,7 +215,7 @@ function LockOnController:Start(c)
 		if processed then
 			return
 		end
-		if input.UserInputType == Enum.UserInputType.MouseButton3 or input.KeyCode == Enum.KeyCode.L or input.KeyCode == Enum.KeyCode.ButtonR3 then
+		if input.UserInputType == Enum.UserInputType.MouseButton3 or input.KeyCode == Enum.KeyCode.L or input.KeyCode == Enum.KeyCode.ButtonX then
 			LockOnController:Toggle()
 		end
 	end)

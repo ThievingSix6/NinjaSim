@@ -391,7 +391,7 @@ function ZoneDecor.Village(ctx)
 				first = first or p
 				lastP = p
 				local base = ctx.At(p.X, p.Z).Position
-				Props.Torii(f, CFrame.lookAt(base, base + p.Dir), 14, 11.5, VERMILION)
+				Props.Torii(f, CFrame.lookAt(base, base + p.Dir), 14, 16, VERMILION) -- tall enough to walk and jump through
 				for _, side in ipairs({ -1, 1 }) do
 					ctx.Claim(p.X - p.Dir.Z * 7 * side, p.Z + p.Dir.X * 7 * side, 1.5)
 				end

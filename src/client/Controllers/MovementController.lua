@@ -77,6 +77,10 @@ local function hookCharacter(character: Model)
 	end
 	jumpsLeft, airborneSince = 0, nil
 	humanoid.StateChanged:Connect(function(_, new)
+		if new == Enum.HumanoidStateType.Jumping and controllers.CombatController then
+			-- fluid combat: jumping out of a swing cancels it
+			controllers.CombatController:CancelSwing(true)
+		end
 		if new == Enum.HumanoidStateType.Jumping or new == Enum.HumanoidStateType.Freefall then
 			airborneSince = airborneSince or os.clock()
 		elseif new == Enum.HumanoidStateType.Landed or new == Enum.HumanoidStateType.Running

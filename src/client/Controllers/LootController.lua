@@ -5,13 +5,12 @@
 	"Drop"), so this draws it locally: the hat spinning above the ground inside a
 	Diablo-style light pillar in its rarity colour, with a sound. Walking within
 	Hats.PickupRadius asks the server to pick it up (the server checks the distance);
-	after Hats.AutoCollect seconds the server hands it over anyway. "Looted" shows the
-	pickup toast with the hat's name in its rarity colour. "Proc" and "Heal" show the
+	after Hats.AutoCollect seconds the server hands it over anyway. "Looted" shows a
+	small side note (right edge, fades away) with the item's name in its rarity colour. "Proc" and "Heal" show the
 	on-hit procs and life steal.
 
 	Charms (Config/Charms) come the same way with `Charm` in the payload instead of
-	`Hat`: the charm object turns in its pillar, and the Hexfire Torch's drop gets a
-	screen-wide callout of its own.
+	`Hat`: the charm object turns in its pillar, with the same side note on pickup.
 ]]
 
 local Players = game:GetService("Players")
@@ -209,18 +208,9 @@ local function onCharmLooted(charm, salvaged: boolean)
 		return
 	end
 	local rarity = Charms.Rarity(charm.R)
-	local size = Charms.Size(charm)
-	local nc = controllers.NotificationController
-	local sub = rarity.Name .. " " .. size.Name .. "  -  Inventory (I)"
-	if charm.S then
-		sub = Charms.Lines(charm)[1][1] .. "  -  Inventory (I)"
-	end
-	nc:Callout(Charms.Name(charm), sub, rarity.Color, Charms.Icon(charm), if charm.U or charm.S then 6 else 3.5)
+	local detail = if charm.S then Charms.Lines(charm)[1][1] else rarity.Name .. " " .. Charms.Size(charm).Name
+	controllers.NotificationController:Side(string.format("%s  (%s)", Charms.Name(charm), detail), rarity.Color, if charm.U or charm.S then 5 else 3.5)
 	sound(if charm.U or rarity.Index >= 3 then "TierUp" else "Purchase", 0.8, 1.1)
-	if charm.U and controllers.EffectsController then
-		controllers.EffectsController:Flash(rarity.Color, 0.4)
-		controllers.EffectsController:CharacterBurst(Charms.Hexfire.Color, true)
-	end
 	if controllers.HUD and controllers.HUD.SetBadge then
 		controllers.HUD:SetBadge("Inventory", true)
 	end
@@ -241,12 +231,10 @@ local function onLooted(payload)
 		return
 	end
 	local rarity = Hats.Rarity(hat.R)
-	local name = Hats.Name(hat)
-	local nc = controllers.NotificationController
 	if payload.Salvaged then
 		return -- the server already said storage was full
 	end
-	nc:Callout(name, rarity.Name .. " Hat" .. (if rarity.Index >= 4 then "  -  equip it in Hats (H)" else ""), rarity.Color, "Crown", if rarity.Index >= 4 then 4.5 else 3)
+	controllers.NotificationController:Side(string.format("%s  (%s Hat)", Hats.Name(hat), rarity.Name), rarity.Color, if rarity.Index >= 4 then 4.5 else 3)
 	sound("Purchase", 0.7, 1 + rarity.Index * 0.08)
 	if controllers.HUD and controllers.HUD.SetBadge then
 		controllers.HUD:SetBadge("Hats", true)

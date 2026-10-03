@@ -4,7 +4,8 @@
 	Circle on a PlayStation pad (ButtonB; B on Xbox), Q or Left Ctrl on a keyboard, or
 	the roll button on touch screens. Moving, the player rolls that way; standing
 	still, they hop back (a backstep). It costs stamina (CombatController's pool), works
-	only on the ground, and can't cut a swing's windup short (only its recovery).
+	only on the ground, and cancels a swing in progress (fluid combat: a roll during a
+	swing's wind-up cancels it on the server too, see CombatService:CancelSwing).
 
 	This client owns its character's physics, so it moves the roll itself with a
 	LinearVelocity in the ground plane. The server (CombatService "Dodge") checks the
@@ -111,14 +112,12 @@ function DodgeController:Dodge(): boolean
 		return false -- rolls start on the ground
 	end
 	local combat = controllers.CombatController
-	if combat:InWindup() then
-		return false -- committed: a swing can only be rolled out of once its blade has landed
-	end
 	if not combat:TrySpend(Balance.Stamina.Dodge) then
 		return false
 	end
 	lastDodge = now
-	combat:ClearBuffer()
+	-- the roll cancels any swing (the "Dodge" event cancels a wind-up on the server)
+	combat:CancelSwing(false)
 
 	local move = humanoid.MoveDirection
 	local flatMove = Vector3.new(move.X, 0, move.Z)

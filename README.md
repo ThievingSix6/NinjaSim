@@ -27,13 +27,13 @@ Fight enemies to earn XP and Coins. Level up to unlock ninja ranks from Brown Ni
 | Dodge roll (the way you move; standing still hops back) | `Q` or `Left Ctrl` | Circle (PlayStation) / B (Xbox) / Roll button |
 | Skills (4 slots) / Skills menu | `1` `2` `3` `4` / `K` | LB, RB, Y, LT / skill bar on the HUD |
 | Suit ultimates (unlocked by mastery) | `Z` `X` `C` `V` | D-pad up, right, down, left / ultimate bar on the HUD |
-| Lock on to the nearest enemy (toggle; flick the right stick to switch) | Middle mouse or `L` | R3 / LOCK button |
+| Lock on to the nearest enemy (toggle; flick the right stick to switch) | Middle mouse or `L` | Square (PlayStation) / X (Xbox) / LOCK button |
 | Shop / Pets / Inventory (gear and charms) | `G` / `P` / `I` | HUD buttons |
 | Rebirth / Upgrades / Areas / Trophies | `R` / `U` / `M` / `T` | HUD buttons |
 | Suits / Trade | `N` / `Y` | HUD buttons |
 | Sprint (x1.4 speed) | Hold `Shift` | Click L3 / always on for touch |
 | Double jump (with a flip) | `Space` again in the air | Jump again in the air |
-| Close menu | `Esc` | B |
+| Close menu (clicking outside a menu leaves it open) | `Esc` or the X | B |
 | Admin panel (admins only) | `F2` | Admin button (top right) |
 | Hatch an egg / unlock a gate / Mutation Machine | Walk up and press the prompt (`E`) | prompt |
 
@@ -42,8 +42,8 @@ Fight enemies to earn XP and Coins. Level up to unlock ninja ranks from Brown Ni
 - **Combat:** a four-hit katana combo (horizontal slice left, rising slice right, spin slice right, jumping downward finisher) animated full-body in code, with katana trails, hit stop, a small lunge into each strike and light aim assist. The spin hits all around; the finisher hits harder, launches enemies and slams the ground. It has damage numbers, crits, hit sparks, enemy recoil, knockback, death effects, a combo meter, kill streaks, screen shake and coin fly-ups. Hit detection is server-authoritative (arc + range).
   - **Souls-style pacing** (2026-10-02): swings are slower and heavier (`Combo.Pace`, `Balance.BaseAttackInterval` 0.62 s), each one cuts at most 4 enemies, you walk slowly while a swing plays, and a press during a swing is queued. No weapon reaches further round you than the katana: nunchaku, spear and claw spins lost their extra reach, and only one move per weapon hits all around.
   - **Stamina** (`Balance.Stamina`, `Util/Stamina`): every swing (finishers more) and every dodge spends it; it refills after a short pause. The bar is under your health. The server keeps its own pool and refuses actions it can't cover.
-  - **Dodge roll** (`DodgeController`, `CombatService`): Circle / B, `Q` or `Left Ctrl`. Rolls 17 studs the way you move (a backstep standing still), with i-frames that make enemy and boss hits miss ("DODGED!"). You can roll out of a swing's recovery but not its windup.
-  - **Lock-on** (`LockOnController`): middle mouse or `L` (R3 on a pad, LOCK on touch) locks on to the nearest enemy in front. The camera keeps it framed behind you, your ninja keeps facing it (so you strafe and roll around it), a reticle marks it and swings aim at it. Flick the right stick to switch target; when it dies the lock jumps to the next one.
+  - **Dodge roll** (`DodgeController`, `CombatService`): Circle / B, `Q` or `Left Ctrl`. Rolls 17 studs the way you move (a backstep standing still), with i-frames that make enemy and boss hits miss ("DODGED!"). Rolling (or jumping) cancels the swing you're in: the server works out a swing's hits when its blade lands, so a swing cancelled in its wind-up deals nothing and the combo starts over, and you can attack again as soon as you land.
+  - **Lock-on** (`LockOnController`): middle mouse or `L` (Square / X on a pad, LOCK on touch) locks on to the nearest enemy in front. The camera keeps it framed behind you, your ninja keeps facing it (so you strafe and roll around it), a reticle marks it and swings aim at it. Flick the right stick to switch target; when it dies the lock jumps to the next one.
   - Enemies wind their attacks up for 0.62 s (`Balance.EnemyWindup`) so you can read them and roll through.
 - **Skills:** 12 ninja and samurai skills for crowd fights, on 4 hotkey slots with a skill bar (cooldown sweeps) above the XP bar.
   - Shuriken Storm, Whirlwind Slash, Iaido Dash, Wind Step, Smoke Bomb, Kunai Rain, Dragon Flame, Oni Quake, Lightning Blade, Shadow Clone, Bushido Spirit and the Thousand Cuts ultimate: cones, circles, lines, chains, clones, dashes and buffs.
@@ -77,6 +77,7 @@ Fight enemies to earn XP and Coins. Level up to unlock ninja ranks from Brown Ni
   - Gates unlock by level plus Coins.
 - **Enemies:** 24 enemy types across 6 procedural rig archetypes, all with walk, attack, hit and death animation. Stats are derived from level.
 - **Bosses:** 8 bosses with health bars, enrage below 35% HP, and summons at 66% and 33%. Their telegraphed attacks are Slam, Shockwave ring, Meteor barrage and Dash. Rewards are shared with everyone who helped, and each boss has a rare katana drop.
+- **Notifications:** a boss spawn banner only shows for players in that boss's area; boss kills appear as a red system line in the chat; item drops (yours and other players' rare finds) show as a small line of text at the right edge that fades away.
 - **Rebirth:** resets level, coins and areas for Spirit Shards and a permanent bonus. Unlocks milestones such as the Spirit Egg, auto swing and exclusive cosmetics.
 - **Spirit upgrades:** 10 permanent upgrades (XP, Coins, Damage, Speed, Attack Speed, Crit, Luck, Respawn, Double Drop, Shard gain).
 - **Shop (not pay-to-win):** everything costs Coins or Shards earned in game.
