@@ -19,6 +19,8 @@
 	               { Kind = "Shards", Cost = n, Rebirths = r } bought with Spirit Shards
 	Skills level up to Skills.MaxLevel with Coins (or Shards for Shard skills):
 	+25% damage and a little less cooldown per level.
+	Charms (Config/Charms) add levels on top, past MaxLevel up to HardCap; beyond
+	MaxLevel each level still adds +25% damage and takes 3% off the cooldown.
 ]]
 
 local Balance = require(script.Parent.Balance)
@@ -27,7 +29,9 @@ local Tiers = require(script.Parent.Tiers)
 local Skills = {}
 
 Skills.Slots = 4
-Skills.MaxLevel = 5
+Skills.MaxLevel = 5 -- highest level you can buy
+Skills.HardCap = 20 -- highest level charms can push a skill to
+Skills.OverCooldown = 0.97 -- cooldown multiplier per level past MaxLevel
 Skills.DamagePerLevel = 0.25
 Skills.CooldownPerLevel = 0.05
 Skills.GlobalCooldown = 0.3 -- seconds between any two casts
@@ -147,18 +151,34 @@ function Skills.Get(id: string?)
 	return if id then Skills.ById[id] else nil
 end
 
+-- The level a skill really casts at: the bought level plus charm levels (from the
+-- derived stats' SkillBonus / AllSkills), capped at HardCap. nil when not learned.
+function Skills.Effective(level: number?, stats, id: string): number?
+	if not level then
+		return nil
+	end
+	local bonus = 0
+	if stats then
+		bonus = (stats.SkillBonus and stats.SkillBonus[id] or 0) + (stats.AllSkills or 0)
+	end
+	return math.clamp(level + bonus, 1, Skills.HardCap)
+end
+
 -- Damage multiplier from the skill's level.
 function Skills.Power(level: number): number
-	return 1 + Skills.DamagePerLevel * (math.clamp(level, 1, Skills.MaxLevel) - 1)
+	return 1 + Skills.DamagePerLevel * (math.clamp(level, 1, Skills.HardCap) - 1)
 end
 
 function Skills.Cooldown(def, level: number): number
-	return def.Cooldown * (1 - Skills.CooldownPerLevel * (math.clamp(level, 1, Skills.MaxLevel) - 1))
+	local l = math.clamp(level, 1, Skills.HardCap)
+	local cd = def.Cooldown * (1 - Skills.CooldownPerLevel * (math.min(l, Skills.MaxLevel) - 1))
+	return cd * Skills.OverCooldown ^ math.max(0, l - Skills.MaxLevel)
 end
 
 -- Buff / clone duration grows a little with level.
 function Skills.Duration(def, level: number): number
-	return (def.Duration or 0) + 0.5 * (math.clamp(level, 1, Skills.MaxLevel) - 1)
+	local l = math.clamp(level, 1, Skills.HardCap)
+	return (def.Duration or 0) + 0.5 * (math.min(l, Skills.MaxLevel) - 1) + 0.25 * math.max(0, l - Skills.MaxLevel)
 end
 
 -- Purchase price: currency, amount (nil for free unlocks).

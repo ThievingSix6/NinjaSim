@@ -942,6 +942,305 @@ return function(E)
 		task.wait(0.5)
 	end)
 
+	step("charms", function()
+		local DC = E.cm("Controllers.DataController")
+		local DS = E.sm("DataService")
+		local CS = E.sm("CharmService")
+		local SS = E.sm("StatService")
+		local Charms = E.shared("Config.Charms")
+		local Skills = E.shared("Config.Skills")
+		local mine = DS:Get(player)
+		-- 1) rolls: rarity and size shares, skill charms only on Grand ones
+		local rarity, size, skill, grand = {}, {}, 0, 0
+		for _ = 1, 20000 do
+			local c = Charms.Roll(60, 0)
+			rarity[c.R] = (rarity[c.R] or 0) + 1
+			size[c.Z] = (size[c.Z] or 0) + 1
+			if c.Z == "Grand" then
+				grand += 1
+				if c.S then
+					skill += 1
+				end
+			elseif c.S then
+				report("scenario", "a " .. c.Z .. " charm rolled a skill")
+			end
+			if not Charms.Valid(c) then
+				report("scenario", "rolled an invalid charm")
+			end
+		end
+		print(string.format("20000 rolls: Magic %d Rare %d Legendary %d Mythic %d | Small %d Large %d Grand %d | skill grands %.0f%%",
+			rarity.Magic or 0, rarity.Rare or 0, rarity.Legendary or 0, rarity.Mythic or 0, size.Small or 0, size.Large or 0, size.Grand or 0, skill / grand * 100))
+		local sample = Charms.Roll(120, 0, nil, "Grand", "Mythic", "shuriken_storm")
+		print("sample:", Charms.Name(sample), "|", table.concat((function()
+			local t = {}
+			for _, l in ipairs(Charms.Lines(sample)) do
+				table.insert(t, l[1])
+			end
+			return t
+		end)(), "; "))
+
+		-- 2) a skill charm pushes a skill past the buyable max
+		mine.Skills.shuriken_storm = Skills.MaxLevel
+		DS:Changed(player, "Skills")
+		local before = SS:Get(player)
+		local damage0 = before.Damage
+		local uid = CS:Add(player, Charms.Roll(60, 0, nil, "Grand", "Legendary", "shuriken_storm"))
+		task.wait(0.3)
+		local charm = mine.Charms[uid]
+		local stats = SS:Get(player)
+		local effective = Skills.Effective(mine.Skills.shuriken_storm, stats, "shuriken_storm")
+		print("grand skill charm placed at", charm.X, charm.Y, "| shuriken storm level", mine.Skills.shuriken_storm, "->", effective, "| damage", damage0, "->", stats.Damage)
+		if not charm.X then
+			report("scenario", "a new charm was not put in the grid")
+		end
+		if effective <= Skills.MaxLevel then
+			report("scenario", "the skill charm did not raise the skill past the cap")
+		end
+		local def = Skills.Get("shuriken_storm")
+		print(string.format("cooldown at %d: %.2fs (max buyable %d: %.2fs), power x%.2f", effective, Skills.Cooldown(def, effective), Skills.MaxLevel, Skills.Cooldown(def, Skills.MaxLevel), Skills.Power(effective)))
+		-- the server casts at the boosted level
+		local slot = table.find(mine.SkillSlots, "shuriken_storm")
+		if slot then
+			local ok, result = E.sm("SkillService"):Cast(player, slot, nil)
+			print("server cast:", ok, "cooldown", result and result.Cooldown)
+			if ok and math.abs(result.Cooldown - Skills.Cooldown(def, effective)) > 0.01 then
+				report("scenario", "the server cast at the bought level, not the charm level")
+			end
+		end
+		-- the client sees it too
+		local clientStats = DC:GetStats()
+		print("client SkillBonus", clientStats.SkillBonus and clientStats.SkillBonus.shuriken_storm)
+
+		-- 3) placing: off the grid and overlapping are refused, stash turns it off
+		print("place at row 3 (runs off):", DC:Request("PlaceCharm", uid, 1, 3))
+		local small = CS:Add(player, Charms.Roll(60, 0, nil, "Small", "Magic"))
+		task.wait(0.2)
+		local sx, sy = mine.Charms[small].X, mine.Charms[small].Y
+		local overlap = DC:Request("PlaceCharm", uid, sx, sy)
+		print("small charm at", sx, sy, "| move the grand onto it:", overlap)
+		if overlap or DC:Request("PlaceCharm", uid, 1, 3) then
+			report("scenario", "a charm was placed where it doesn't fit")
+		end
+		print("move the grand to column 10 row 2:", DC:Request("PlaceCharm", uid, 10, 2), mine.Charms[uid].X, mine.Charms[uid].Y)
+		print("stash it:", DC:Request("StashCharm", uid))
+		task.wait(0.2)
+		local off = Skills.Effective(mine.Skills.shuriken_storm, SS:Get(player), "shuriken_storm")
+		print("stashed: shuriken storm level", off)
+		if off ~= Skills.MaxLevel then
+			report("scenario", "a stashed charm still counted")
+		end
+		DC:Request("PlaceCharm", uid, 10, 2)
+
+		-- 4) the Hexfire Torch: one counts, 25% on attack, the tendril burns
+		local torch = Charms.RollUnique("hexfire", 80)
+		print("torch:", Charms.Name(torch), torch.S.K, torch.S.N, "| lines", #Charms.Lines(torch))
+		local t1 = CS:Add(player, torch)
+		local t2 = CS:Add(player, Charms.RollUnique("hexfire", 80))
+		task.wait(0.3)
+		stats = SS:Get(player)
+		print("two torches in the grid: Hexfire chance", stats.Hexfire, "AllSkills", stats.AllSkills, "(first", torch.S.N, ")")
+		if stats.Hexfire ~= Charms.Hexfire.Chance then
+			report("scenario", "the torch's Hexfire chance is " .. tostring(stats.Hexfire))
+		end
+		local hits, casts = 0, 0
+		local Net = E.shared("Net")
+		local hitConn = Net.Event("SkillHits").OnClientEvent:Connect(function(payload)
+			if type(payload) == "table" and payload.Skill == "hexfire" then
+				hits += #payload.Hits
+			end
+		end)
+		local castConn = Net.Event("SkillCast").OnClientEvent:Connect(function(payload)
+			if type(payload) == "table" and payload.Skill == "hexfire" then
+				casts += 1
+			end
+		end)
+		local root = player.Character.HumanoidRootPart
+		for _, e in pairs(E.sm("EnemyService").All) do
+			if not e.Dead and not e.IsBoss and not e.Def.Static then
+				E.sm("ZoneService"):MarkTeleported(player)
+				local p = e.Root.Position
+				-- face it by yaw (Lune's CFrame.lookAt mirrors Roblox's): from +Z, looking -Z
+				root.CFrame = CFrame.new(p + Vector3.new(0, 0, 12)) * CFrame.Angles(0, 0, 0)
+				break
+			end
+		end
+		task.wait(0.2)
+		print("facing", root.CFrame.LookVector)
+		-- force the 25% roll so one swing must cast it
+		local live = SS:Get(player)
+		live.Hexfire = 1
+		freshStamina()
+		E.cm("Controllers.CombatController"):Swing()
+		task.wait(1.4)
+		hitConn:Disconnect()
+		castConn:Disconnect()
+		print("swing with Hexfire forced: casts", casts, "tendril hits", hits)
+		if casts == 0 then
+			report("scenario", "an attack did not cast Hexfire")
+		elseif hits == 0 then
+			report("scenario", "the Hexfire tendril hit nothing")
+		end
+		DC:Request("SalvageCharm", t2)
+
+		-- 5) a drop on the ground is picked up into the charm stash
+		local count0 = 0
+		for _ in pairs(mine.Charms) do
+			count0 += 1
+		end
+		local dropId = E.sm("LootService"):Drop(player, root.Position + Vector3.new(3, -2.5, 0), Charms.Roll(40, 0, nil, "Large", "Rare"), "Charm")
+		task.wait(0.4)
+		local seen = E.cm("Controllers.LootController"):Drops()[dropId] ~= nil
+		print("charm drop drawn on the client:", seen, "| pickup:", DC:Request("PickupHat", dropId))
+		task.wait(0.3)
+		local count1 = 0
+		for _ in pairs(mine.Charms) do
+			count1 += 1
+		end
+		print("charms", count0, "->", count1)
+		if count1 ~= count0 + 1 then
+			report("scenario", "the picked-up charm was not stored")
+		end
+		print(string.format("drop chances: %.2f%% per kill, torch %.2f%% per boss kill", Charms.DropChance * 100, Charms.TorchChance * 100))
+
+		-- 6) trading a charm
+		local rival = E.addServerPlayer("CharmRival", 778)
+		for _ = 1, 60 do
+			if DS:Get(rival) then
+				break
+			end
+			task.wait(0.1)
+		end
+		local theirs = DS:Get(rival)
+		if theirs then
+			local TS = E.sm("TradeService")
+			local gift = CS:Add(rival, Charms.Roll(50, 0, nil, "Grand", "Mythic", "any"))
+			print("request:", DC:Request("TradeRequest", 778), "accept:", TS:Respond(rival, player.UserId, true))
+			print("rival offers a Mythic grand:", TS:Offer(rival, "Charm", gift, true), "I offer my small:", DC:Request("TradeOffer", "Charm", small, true))
+			print("salvage while offered refused:", not DC:Request("SalvageCharm", small))
+			DC:Request("TradeReady", true)
+			TS:SetReady(rival, true)
+			task.wait(3.6)
+			local got = nil
+			for _, c in pairs(mine.Charms) do
+				if c.R == "Mythic" and c.Z == "Grand" then
+					got = c
+				end
+			end
+			print("after the trade: got the Mythic grand", got ~= nil, "in stash", got and got.X == nil, "| small gone", mine.Charms[small] == nil, "| rival has it", (function()
+				for _, c in pairs(theirs.Charms) do
+					if c.Z == "Small" then
+						return true
+					end
+				end
+				return false
+			end)())
+			if not got or mine.Charms[small] ~= nil then
+				report("scenario", "the charm trade did not swap")
+			end
+			E.removeServerPlayer(rival)
+		else
+			report("scenario", "the charm rival's save never loaded")
+		end
+
+		-- 7) the inventory menu draws the grid
+		local MM = E.cm("UI.MenuManager")
+		if MM then
+			-- the rival's data events also landed on this one client: resync ours first
+			DS:Changed(player, "Charms")
+			task.wait(0.3)
+			MM:Open("Inventory")
+			task.wait(0.5)
+			local gui = player.PlayerGui
+			local window = nil
+			for _, d in ipairs(gui:GetDescendants()) do
+				if d.Name == "Inventory" and d:IsA("Frame") and d:FindFirstChild("Header") then
+					window = d
+				end
+			end
+			local tiles = 0
+			if window then
+				for _, d in ipairs(window:GetDescendants()) do
+					if d:IsA("TextButton") and string.sub(d.Name, 1, 5) == "Charm" then
+						tiles += 1
+					end
+				end
+			end
+			print("inventory window", window ~= nil, "charm tiles", tiles, "owned", (function()
+				local n = 0
+				for _ in pairs(mine.Charms) do
+					n += 1
+				end
+				return n
+			end)())
+			if not window or tiles == 0 then
+				report("scenario", "the inventory shows no charms")
+			end
+			MM:Close()
+		end
+		mine.Skills.shuriken_storm = 1
+		DS:Changed(player, "Skills")
+	end)
+
+	step("lockon", function()
+		local LC = E.cm("Controllers.LockOnController")
+		local root = player.Character.HumanoidRootPart
+		local target = nil
+		for _, e in pairs(E.sm("EnemyService").All) do
+			if not e.Dead and not e.IsBoss and not e.Def.Static then
+				target = e
+				break
+			end
+		end
+		if not target then
+			report("scenario", "no enemy to lock on to")
+			return
+		end
+		E.sm("ZoneService"):MarkTeleported(player)
+		local p = target.Root.Position
+		-- stand next to it, facing away: the lock still finds it and turns us round
+		root.CFrame = CFrame.lookAt(p + Vector3.new(0, 0, 18), p + Vector3.new(0, 0, 40))
+		task.wait(0.3)
+		LC:Toggle()
+		local locked = LC:Target()
+		print("locked on:", locked ~= nil, locked and locked:GetAttribute("DisplayName"))
+		if not locked then
+			report("scenario", "lock-on found nothing")
+			return
+		end
+		-- right after each camera update, how well do the character and camera face it?
+		-- (measured against the engine's own CFrame.lookAt: Lune 0.8.9's mirrors Roblox's)
+		local original = LC.Apply
+		local samples, faceSum, camSum = 0, 0, 0
+		LC.Apply = function(self, cam, dt)
+			original(self, cam, dt)
+			local t = self:Target()
+			if t then
+				local tp = t.PrimaryPart.Position
+				local d = Vector3.new(tp.X - root.Position.X, 0, tp.Z - root.Position.Z)
+				if d.Magnitude > 2 then
+					local want = CFrame.lookAt(root.Position, Vector3.new(tp.X, root.Position.Y, tp.Z)).LookVector
+					local camWant = CFrame.lookAt(cam.CFrame.Position, Vector3.new(tp.X, cam.CFrame.Position.Y, tp.Z)).LookVector
+					samples += 1
+					faceSum += root.CFrame.LookVector:Dot(want)
+					camSum += Vector3.new(cam.CFrame.LookVector.X, 0, cam.CFrame.LookVector.Z).Unit:Dot(camWant)
+				end
+			end
+		end
+		task.wait(0.5) -- let it turn round first
+		samples, faceSum, camSum = 0, 0, 0
+		task.wait(1)
+		LC.Apply = original
+		print(string.format("over %d frames: facing the target %.2f, camera looking at it %.2f (1 = dead on)", samples, faceSum / math.max(1, samples), camSum / math.max(1, samples)))
+		if samples > 0 and faceSum / samples < 0.9 then
+			report("scenario", "the locked character doesn't face the target")
+		end
+		if samples > 0 and camSum / samples < 0.8 then
+			report("scenario", "the lock-on camera doesn't look at the target")
+		end
+		LC:Toggle()
+		print("unlocked:", LC:Target() == nil)
+	end)
+
 	step("ragdolls", function()
 		local AC = E.cm("Controllers.AnimationController")
 		print("ragdolls made so far", AC.RagdollCount)

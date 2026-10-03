@@ -472,6 +472,38 @@ local COMMANDS: { [string]: { Owner: boolean?, Target: boolean?, Run: (Player, P
 			return services.LootService:AdminDrop(target :: Player, rarity)
 		end,
 	},
+	DropCharm = {
+		Target = true,
+		-- the box: a rarity (Magic..Mythic), a size (Small, Large, Grand), Skill or Torch; empty = a normal roll
+		Run = function(_admin, target, value)
+			if not services.CharmService then
+				return false, "Charms are not running"
+			end
+			local kind = nil
+			if type(value) == "string" and value ~= "" then
+				local Charms = require(ReplicatedStorage.Shared.Config.Charms)
+				local names = { "Skill", "Torch" }
+				for _, r in ipairs(Charms.Rarities) do
+					if r.Name ~= "Unique" then
+						table.insert(names, r.Name)
+					end
+				end
+				for _, size in ipairs(Charms.Sizes) do
+					table.insert(names, size.Id)
+				end
+				for _, name in ipairs(names) do
+					if string.sub(string.lower(name), 1, #value) == string.lower(value) then
+						kind = name
+						break
+					end
+				end
+				if not kind then
+					return false, "Type a rarity, a size (Small, Large, Grand), Skill or Torch"
+				end
+			end
+			return services.CharmService:AdminDrop(target :: Player, kind)
+		end,
+	},
 	ListAdmins = {
 		Run = function()
 			return true, nil

@@ -230,6 +230,13 @@ function HUD:SetBadge(name: string, on: boolean)
 	end
 end
 
+-- The touch LOCK button lights up while a target is locked (LockOnController).
+function HUD:SetLockOn(on: boolean)
+	if refs and refs.LockButton then
+		Kit.Api(refs.LockButton).SetColor(if on then "Red" else "Dark")
+	end
+end
+
 function HUD:GetMenuButton(name: string): GuiObject?
 	return refs.MenuButtons[name]
 end
@@ -541,6 +548,17 @@ function HUD:Start(c)
 				c.DodgeController:Dodge()
 			end
 		end)
+		-- target lock (LockOnController)
+		local lock = Kit.Button({
+			Text = "LOCK", TextSize = 18, Color = "Dark", Size = UDim2.fromOffset(70, 70), Radius = 35,
+			Position = UDim2.new(1, -60, 1, -340), AnchorPoint = Vector2.new(0.5, 0.5), StrokeThickness = 4, Parent = root,
+		})
+		lock.MouseButton1Down:Connect(function()
+			if c.LockOnController then
+				c.LockOnController:Toggle()
+			end
+		end)
+		refs.LockButton = lock
 	end
 
 	-- ===== Data bindings =====

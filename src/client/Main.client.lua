@@ -31,6 +31,7 @@ local ORDER = {
 	{ "Overlays", UI },
 	{ "CombatController", Controllers },
 	{ "DodgeController", Controllers },
+	{ "LockOnController", Controllers },
 	{ "SkillController", Controllers },
 	{ "SkillBar", UI },
 	{ "UltimateController", Controllers },

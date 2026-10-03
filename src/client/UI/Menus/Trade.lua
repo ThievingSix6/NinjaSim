@@ -1,10 +1,10 @@
 --[[
-	Trade: trade pets and hats with another player (TradeService, TradeController).
+	Trade: trade pets, hats and charms with another player (TradeService, TradeController).
 	Shortcut: Y.
 
 	Without an open trade it lists the other players in the server with a Request
 	button (invites arrive as a card with Accept / Decline). In a trade it shows your
-	offer and theirs side by side, your pets and hats to add (click a card to put it on
+	offer and theirs side by side, your pets, hats and charms to add (click a card to put it on
 	the table or take it back), and Ready. Any change un-readies both sides; when both
 	are ready a short countdown runs and the items swap.
 ]]
@@ -18,6 +18,8 @@ local Hats = require(Shared.Config.Hats)
 local Rarity = require(Shared.Config.Rarity)
 local Mutations = require(Shared.Config.Mutations)
 local HatBuilder = require(Shared.Visuals.HatBuilder)
+local Charms = require(Shared.Config.Charms)
+local CharmBuilder = require(Shared.Visuals.CharmBuilder)
 
 local Menu = {}
 
@@ -34,7 +36,7 @@ function Menu.Build(ctx)
 	-- ===== lobby: other players =====
 	local lobby = Kit.New("Frame", { BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1), Name = "Lobby", Parent = content })
 	Kit.Label({
-		Text = "Trade pets and hats with players in this server. Both of you press Ready, then the items swap after a 3 second countdown. Any change un-readies both sides.",
+		Text = "Trade pets, hats and charms with players in this server. Both of you press Ready, then the items swap after a 3 second countdown. Any change un-readies both sides.",
 		Font = Theme.FontBody, TextSize = 15, Color = Theme.SubText, Wrapped = true, Size = UDim2.new(1, 0, 0, 40), Stroke = false, Parent = lobby,
 	})
 	local players = Common.Grid(lobby, { List = true, Gap = 8, Size = UDim2.new(1, 0, 1, -50), Position = UDim2.fromOffset(0, 50) })
@@ -59,8 +61,8 @@ function Menu.Build(ctx)
 	local pickKind = "Pet"
 	local refresh
 	local tabs = Kit.New("Frame", { BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 42), Position = UDim2.fromOffset(0, 252), Parent = session })
-	Kit.Tabs(tabs, { { Name = "Your Pets", Icon = "Pets" }, { Name = "Your Hats", Icon = "Crown" } }, function(name)
-		pickKind = if name == "Your Hats" then "Hat" else "Pet"
+	Kit.Tabs(tabs, { { Name = "Your Pets", Icon = "Pets" }, { Name = "Your Hats", Icon = "Crown" }, { Name = "Your Charms", Icon = "Sparkle" } }, function(name)
+		pickKind = if name == "Your Hats" then "Hat" elseif name == "Your Charms" then "Charm" else "Pet"
 		refresh()
 	end, "Sky")
 	local inventory = Common.Grid(session, { CellSize = UDim2.fromOffset(88, 106), Gap = 8, Size = UDim2.new(1, 0, 0, 178), Position = UDim2.fromOffset(0, 298) })
@@ -98,6 +100,18 @@ function Menu.Build(ctx)
 		})
 	end
 
+	local function charmCard(parent, charm, order: number, onClick)
+		if not Charms.Valid(charm) then
+			return nil
+		end
+		local rarity = Charms.Rarity(charm.R)
+		return Common.Card({
+			Title = Charms.Name(charm), Paint = rarity.Paint, Model = CharmBuilder.Build(charm), Zoom = 1.2,
+			Sub = if charm.S then Charms.Lines(charm)[1][1] else rarity.Name .. " " .. Charms.Size(charm).Id,
+			SubColor = if charm.S then Theme.Gold else rarity.Color, LayoutOrder = order, Parent = parent, OnClick = onClick,
+		})
+	end
+
 	local function showOffer(grid, offer, mine: boolean)
 		Common.ClearGrid(grid)
 		local n = 0
@@ -113,8 +127,14 @@ function Menu.Build(ctx)
 				DataController:Request("TradeOffer", "Hat", entry.Uid, false)
 			end else nil)
 		end
+		for _, entry in ipairs(offer.Charm or {}) do
+			n += 1
+			charmCard(grid, entry.Charm, n, if mine then function()
+				DataController:Request("TradeOffer", "Charm", entry.Uid, false)
+			end else nil)
+		end
 		if n == 0 then
-			Common.EmptyNote(grid, if mine then "Click your pets and hats below to offer them" else "Nothing yet")
+			Common.EmptyNote(grid, if mine then "Click your pets, hats and charms below to offer them" else "Nothing yet")
 		end
 	end
 
@@ -136,10 +156,16 @@ function Menu.Build(ctx)
 					table.insert(list, { Uid = uid, Order = -Rarity.Index(def.Rarity) * 100 - (Mutations.Get(owned.Mutation) and Mutations.Get(owned.Mutation).Order or 0) })
 				end
 			end
-		else
+		elseif pickKind == "Hat" then
 			for uid, hat in pairs(data.Hats) do
 				if Hats.Valid(hat) and not offered[uid] then
 					table.insert(list, { Uid = uid, Order = -Hats.Rarity(hat.R).Index * 100 - (Mutations.Get(hat.M) and Mutations.Get(hat.M).Order or 0) })
+				end
+			end
+		else
+			for uid, charm in pairs(data.Charms or {}) do
+				if Charms.Valid(charm) and not offered[uid] then
+					table.insert(list, { Uid = uid, Order = -Charms.Rarity(charm.R).Index * 100 - (if charm.S then 50 else 0) - Charms.Size(charm).Index })
 				end
 			end
 		end
@@ -154,12 +180,14 @@ function Menu.Build(ctx)
 			if pickKind == "Pet" then
 				local owned = data.Pets[uid]
 				petCard(inventory, { Uid = uid, Id = owned.Id, Mutation = owned.Mutation }, i, add)
-			else
+			elseif pickKind == "Hat" then
 				hatCard(inventory, data.Hats[uid], i, add)
+			else
+				charmCard(inventory, data.Charms[uid], i, add)
 			end
 		end
 		if #list == 0 then
-			Common.EmptyNote(inventory, if pickKind == "Pet" then "No pets left to offer" else "No hats left to offer")
+			Common.EmptyNote(inventory, if pickKind == "Pet" then "No pets left to offer" elseif pickKind == "Hat" then "No hats left to offer" else "No charms left to offer")
 		end
 	end
 
@@ -220,7 +248,7 @@ function Menu.Build(ctx)
 			refresh()
 		end
 	end)
-	for _, key in ipairs({ "Pets", "Hats" }) do
+	for _, key in ipairs({ "Pets", "Hats", "Charms" }) do
 		DataController:OnChange(key, function()
 			if window.Visible then
 				refresh()

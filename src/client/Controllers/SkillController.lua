@@ -17,6 +17,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Skills = require(Shared.Config.Skills)
 local Mastery = require(Shared.Config.Mastery)
+local Charms = require(Shared.Config.Charms)
 local Net = require(Shared.Net)
 local SkillEffects = require(script.Parent:WaitForChild("SkillEffects"))
 
@@ -125,7 +126,8 @@ function SkillController:Cast(slot: number): boolean
 		controllers.SoundController:Play("Error")
 		return false
 	end
-	local level = data.Skills[def.Id]
+	-- charms in the inventory grid add levels, past the buyable max (Config/Charms)
+	local level = Skills.Effective(data.Skills[def.Id], controllers.DataController:GetStats(), def.Id) :: number
 	local cooldown = Skills.Cooldown(def, level)
 	readyAt[def.Id] = now + cooldown
 	totals[def.Id] = cooldown
@@ -155,7 +157,8 @@ function SkillController:Cast(slot: number): boolean
 end
 
 local function contextFor(caster: Player?, skillId: string, level: number?)
-	local def = Skills.Get(skillId) or Mastery.Get(skillId) -- skills, or suit mastery ultimates
+	-- skills, suit mastery ultimates, or charm spells (the Hexfire Torch)
+	local def = Skills.Get(skillId) or Mastery.Get(skillId) or (if skillId == Charms.Hexfire.Id then Charms.Hexfire else nil)
 	local character = caster and caster.Character
 	local root = character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
 	if not def or not character or not root then

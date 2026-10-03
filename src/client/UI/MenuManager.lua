@@ -16,7 +16,7 @@ local AdminConfig = require(game:GetService("ReplicatedStorage").Shared.Config.A
 
 local MenuManager = {}
 
-local MENUS = { "Shop", "Pets", "Inventory", "Rebirth", "Upgrades", "Areas", "Codes", "Gifts", "Trophies", "Settings", "Egg", "Admin", "Skills", "Hats", "Suits", "Mutate", "Trade" }
+local MENUS = { "Shop", "Pets", "Inventory", "Armory", "Rebirth", "Upgrades", "Areas", "Codes", "Gifts", "Trophies", "Settings", "Egg", "Admin", "Skills", "Hats", "Suits", "Mutate", "Trade" }
 
 local controllers, Kit
 local root: Frame

@@ -155,6 +155,19 @@ end
 function handlers.SalvageHatsUpTo(player, rarity)
 	return services.LootService:SalvageUpTo(player, str(rarity))
 end
+-- charms (CharmService)
+function handlers.PlaceCharm(player, uid, x, y)
+	return services.CharmService:Place(player, str(uid), if type(x) == "number" then x else nil, if type(y) == "number" then y else nil)
+end
+function handlers.StashCharm(player, uid)
+	return services.CharmService:Stash(player, str(uid))
+end
+function handlers.LockCharm(player, uid)
+	return services.CharmService:ToggleLock(player, str(uid))
+end
+function handlers.SalvageCharm(player, uid)
+	return services.CharmService:Salvage(player, str(uid))
+end
 -- trading (TradeService)
 function handlers.TradeRequest(player, userId)
 	return services.TradeService:Request(player, if type(userId) == "number" then userId else nil)

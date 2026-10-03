@@ -532,7 +532,7 @@ for _, c in ipairs({ "TextLabel", "TextButton", "TextBox" }) do
 	prop(c, "TextFits", function() return true end)
 	prop(c, "ContentText", function(p) return rawget(p, "__inst").Text end)
 end
-event("GuiObject", "InputBegan", "InputChanged", "InputEnded", "MouseEnter", "MouseLeave", "MouseMoved", "MouseWheelForward", "MouseWheelBackward")
+event("GuiObject", "InputBegan", "InputChanged", "InputEnded", "MouseEnter", "MouseLeave", "MouseMoved", "MouseWheelForward", "MouseWheelBackward", "SelectionGained", "SelectionLost")
 event("GuiButton", "Activated", "MouseButton1Click", "MouseButton1Down", "MouseButton1Up", "MouseButton2Click")
 event("TextBox", "FocusLost", "Focused")
 method("TextBox", "CaptureFocus", function() end)

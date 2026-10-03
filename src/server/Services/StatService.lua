@@ -18,6 +18,7 @@ local STAT_KEYS = {
 	Hats = true, EquippedHat = true, -- hat stats (LootService)
 	SkillBuff = true, -- not a save key: SetModifier marks it to push buffed stats
 	Mastery = true, Suit = true, -- the worn suit's mastery bonus (Config/Mastery)
+	Charms = true, -- the charm grid (CharmService)
 }
 
 local services

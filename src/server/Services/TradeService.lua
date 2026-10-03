@@ -1,19 +1,20 @@
 --[[
-	TradeService: player-to-player trades of pets and hats, decided on the server.
+	TradeService: player-to-player trades of pets, hats and charms, decided on the server.
 
 	  Request(player, targetUserId)        invite someone in the server (expires after
 	                                       Trade.InviteSeconds)
 	  Respond(player, fromUserId, accept)  accept or decline an invite: accepting opens
 	                                       a trade between the two
-	  Offer(player, kind, uid, add)        put a pet ("Pet") or hat ("Hat") you own on
+	  Offer(player, kind, uid, add)        put a pet ("Pet"), hat ("Hat") or charm ("Charm") you own on
 	                                       the table, or take it back (MaxItems each)
 	  SetReady(player, ready)              when both are ready a short countdown runs;
 	                                       any change to either offer un-readies both
 	  Cancel(player)                       end the trade (leaving or dying cancels too)
 
 	When the countdown ends with both still ready, everything is checked again
-	(ownership, room in pet and hat storage) and the items move in one step: each
-	gets a fresh uid on its new owner, equipped items are unequipped, and both saves
+	(ownership, room in pet, hat and charm storage) and the items move in one step: each
+	gets a fresh uid on its new owner, equipped items are unequipped (charms arrive in
+	the stash, outside the grid), and both saves
 	are written straight away. The "Trade" event keeps both clients in sync:
 	{ Type = "Invite" | "Declined" | "State" | "Closed" | "Done", ... }.
 ]]
@@ -23,6 +24,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Hats = require(Shared.Config.Hats)
+local Charms = require(Shared.Config.Charms)
 local TableUtil = require(Shared.Util.TableUtil)
 local Net = require(Shared.Net)
 
@@ -33,7 +35,7 @@ TradeService.MaxItems = 9
 TradeService.Countdown = 3
 
 local services
-type Offer = { Pet: { string }, Hat: { string } }
+type Offer = { Pet: { string }, Hat: { string }, Charm: { string } }
 type Session = { A: Player, B: Player, Offers: { [Player]: Offer }, Ready: { [Player]: boolean }, Version: number, CountdownAt: number?, Closed: boolean }
 local sessions: { [Player]: Session } = {}
 local invites: { [Player]: { [Player]: number } } = {} -- invites[target][from] = expires at
@@ -50,9 +52,15 @@ end
 -- What a side offers, as records the other client can draw.
 local function describe(player: Player, offer: Offer)
 	local data = services.DataService:Get(player)
-	local out = { Pet = {}, Hat = {} }
+	local out = { Pet = {}, Hat = {}, Charm = {} }
 	if not data then
 		return out
+	end
+	for _, uid in ipairs(offer.Charm) do
+		local charm = data.Charms[uid]
+		if charm then
+			table.insert(out.Charm, { Uid = uid, Charm = charm })
+		end
 	end
 	for _, uid in ipairs(offer.Pet) do
 		local pet = data.Pets[uid]
@@ -144,7 +152,7 @@ function TradeService:Respond(player: Player, fromId: any, accept: any): (boolea
 	end
 	local session: Session = {
 		A = from, B = player,
-		Offers = { [from] = { Pet = {}, Hat = {} }, [player] = { Pet = {}, Hat = {} } },
+		Offers = { [from] = { Pet = {}, Hat = {}, Charm = {} }, [player] = { Pet = {}, Hat = {}, Charm = {} } },
 		Ready = { [from] = false, [player] = false }, Version = 1, Closed = false,
 	}
 	sessions[from] = session
@@ -158,8 +166,8 @@ function TradeService:Offer(player: Player, kind: any, uid: any, add: any): (boo
 	if not session or session.Closed then
 		return false, "You're not trading"
 	end
-	if kind ~= "Pet" and kind ~= "Hat" or type(uid) ~= "string" then
-		return false, "Pick a pet or a hat"
+	if kind ~= "Pet" and kind ~= "Hat" and kind ~= "Charm" or type(uid) ~= "string" then
+		return false, "Pick a pet, a hat or a charm"
 	end
 	local data = services.DataService:Get(player)
 	if not data then
@@ -171,11 +179,12 @@ function TradeService:Offer(player: Player, kind: any, uid: any, add: any): (boo
 		if at then
 			return true, nil
 		end
-		local owned = if kind == "Pet" then data.Pets[uid] else data.Hats[uid]
+		local owned = if kind == "Pet" then data.Pets[uid] elseif kind == "Hat" then data.Hats[uid] else data.Charms[uid]
 		if not owned then
 			return false, "You don't own that"
 		end
-		if #session.Offers[player].Pet + #session.Offers[player].Hat >= TradeService.MaxItems then
+		local mine = session.Offers[player]
+		if #mine.Pet + #mine.Hat + #mine.Charm >= TradeService.MaxItems then
 			return false, "At most " .. TradeService.MaxItems .. " items per trade"
 		end
 		table.insert(list, uid)
@@ -208,27 +217,35 @@ local function execute(session: Session): (boolean, string?)
 				return false, side[1].DisplayName .. " no longer has an offered hat"
 			end
 		end
+		for _, uid in ipairs(offer.Charm) do
+			if not Charms.Valid(side[2].Charms[uid]) then
+				return false, side[1].DisplayName .. " no longer has an offered charm"
+			end
+		end
 	end
-	local function room(data, stats, gainsPets, losesPets, gainsHats, losesHats): string?
+	local function room(data, stats, gainsPets, losesPets, gainsHats, losesHats, gainsCharms, losesCharms): string?
 		if TableUtil.Count(data.Pets) - losesPets + gainsPets > stats.PetStorage then
 			return "pet storage"
 		end
 		if TableUtil.Count(data.Hats) - losesHats + gainsHats > Hats.Storage then
 			return "hat storage"
 		end
+		if TableUtil.Count(data.Charms) - losesCharms + gainsCharms > Charms.Storage then
+			return "charm storage"
+		end
 		return nil
 	end
 	local oa, ob = session.Offers[a], session.Offers[b]
-	local fullA = room(da, sa, #ob.Pet, #oa.Pet, #ob.Hat, #oa.Hat)
+	local fullA = room(da, sa, #ob.Pet, #oa.Pet, #ob.Hat, #oa.Hat, #ob.Charm, #oa.Charm)
 	if fullA then
 		return false, a.DisplayName .. "'s " .. fullA .. " is full"
 	end
-	local fullB = room(db, sb, #oa.Pet, #ob.Pet, #oa.Hat, #ob.Hat)
+	local fullB = room(db, sb, #oa.Pet, #ob.Pet, #oa.Hat, #ob.Hat, #oa.Charm, #ob.Charm)
 	if fullB then
 		return false, b.DisplayName .. "'s " .. fullB .. " is full"
 	end
 	-- take everything out first, then hand it over (no item can exist twice)
-	local moving = { [a] = { Pet = {}, Hat = {} }, [b] = { Pet = {}, Hat = {} } }
+	local moving = { [a] = { Pet = {}, Hat = {}, Charm = {} }, [b] = { Pet = {}, Hat = {}, Charm = {} } }
 	for _, side in ipairs({ { a, da }, { b, db } }) do
 		local p, data = side[1], side[2]
 		for _, uid in ipairs(session.Offers[p].Pet) do
@@ -246,6 +263,10 @@ local function execute(session: Session): (boolean, string?)
 				data.EquippedHat = ""
 			end
 		end
+		for _, uid in ipairs(session.Offers[p].Charm) do
+			table.insert(moving[p].Charm, data.Charms[uid])
+			data.Charms[uid] = nil
+		end
 	end
 	for _, side in ipairs({ { a, db }, { b, da } }) do
 		local giver, receiver = side[1], side[2]
@@ -259,9 +280,14 @@ local function execute(session: Session): (boolean, string?)
 			hat.Lock = nil
 			receiver.Hats[tostring(receiver.HatSerial)] = hat
 		end
+		for _, charm in ipairs(moving[giver].Charm) do
+			receiver.CharmSerial = (tonumber(receiver.CharmSerial) or 0) + 1
+			charm.Lock, charm.X, charm.Y = nil, nil, nil -- arrives in the stash
+			receiver.Charms[tostring(receiver.CharmSerial)] = charm
+		end
 	end
 	for _, p in ipairs({ a, b }) do
-		for _, key in ipairs({ "Pets", "EquippedPets", "PetSerial", "Hats", "EquippedHat", "HatSerial" }) do
+		for _, key in ipairs({ "Pets", "EquippedPets", "PetSerial", "Hats", "EquippedHat", "HatSerial", "Charms", "CharmSerial" }) do
 			services.DataService:Changed(p, key)
 		end
 		if services.LootService then
@@ -271,7 +297,7 @@ local function execute(session: Session): (boolean, string?)
 			services.DataService:SaveNow(p)
 		end)
 	end
-	print(string.format("[TradeService] %s <-> %s: %d pets + %d hats for %d pets + %d hats", a.Name, b.Name, #oa.Pet, #oa.Hat, #ob.Pet, #ob.Hat))
+	print(string.format("[TradeService] %s <-> %s: %d pets + %d hats + %d charms for %d pets + %d hats + %d charms", a.Name, b.Name, #oa.Pet, #oa.Hat, #oa.Charm, #ob.Pet, #ob.Hat, #ob.Charm))
 	return true, nil
 end
 
@@ -319,7 +345,7 @@ end
 -- Items in an open trade can't be deleted, salvaged or mutated from under it.
 function TradeService:IsOffered(player: Player, kind: string, uid: string): boolean
 	local session = sessions[player]
-	return session ~= nil and table.find(session.Offers[player][kind], uid) ~= nil
+	return session ~= nil and session.Offers[player][kind] ~= nil and table.find(session.Offers[player][kind], uid) ~= nil
 end
 
 function TradeService:Init(registry)

@@ -32,6 +32,9 @@ return {
 	EquippedHat = "", -- uid of the worn hat, "" = none
 	HatSerial = 0,
 
+	Charms = {}, -- [uid] = { Z = size, R = rarity, L = itemLevel, A = { { K, V } }, S = { K = skill | "All", N }?, U = unique?, X = col?, Y = row? } (Config/Charms); X/Y = in the grid
+	CharmSerial = 0,
+
 	Upgrades = {
 		XP = 0, Coins = 0, Damage = 0, Speed = 0, AttackSpeed = 0,
 		Crit = 0, Luck = 0, Respawn = 0, Extra = 0, Shards = 0,

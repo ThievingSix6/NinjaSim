@@ -16,6 +16,11 @@
 
 	Requests (RequestService): PickupHat, EquipHat, UnequipHat, LockHat, SalvageHats,
 	SalvageHatsUpTo. Admin: DropHat (AdminService).
+
+	Charms (Config/Charms) drop through the same pipeline: Charms.DropChance (0.3%) per
+	kill per player who earned it, and on boss kills Charms.TorchChance (0.01%) for the
+	Hexfire Torch. Charm drops carry `Charm` instead of `Hat` in the HatLoot payloads
+	and are stored by CharmService:Add (a full charm stash salvages them for Shards).
 ]]
 
 local Players = game:GetService("Players")
@@ -23,6 +28,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Hats = require(Shared.Config.Hats)
+local Charms = require(Shared.Config.Charms)
 local Balance = require(Shared.Config.Balance)
 local HatBuilder = require(Shared.Visuals.HatBuilder)
 local Net = require(Shared.Net)
@@ -32,7 +38,7 @@ local LootService = {}
 
 local services
 local rng = Random.new()
-type Drop = { Id: number, Hat: any, Position: Vector3 }
+type Drop = { Id: number, Hat: any, Position: Vector3, Kind: string }
 local drops: { [Player]: { [number]: Drop } } = {}
 local procReady: { [Player]: { [string]: number } } = {}
 local nextDrop = 0
@@ -51,13 +57,14 @@ local function notify(player: Player, text: string, color: Color3?)
 end
 
 -- ===== drops =====
--- Rolls a hat for `player` at `position` (pass rarityName / baseId to force them).
-function LootService:Drop(player: Player, position: Vector3, hat: any): number
+-- Drops an item for `player` at `position`: a hat, or a charm with kind "Charm".
+function LootService:Drop(player: Player, position: Vector3, item: any, kind: string?): number
 	nextDrop += 1
 	local id = nextDrop
+	local isCharm = kind == "Charm"
 	drops[player] = drops[player] or {}
-	drops[player][id] = { Id = id, Hat = hat, Position = position }
-	event():FireClient(player, { Kind = "Drop", Id = id, Hat = hat, Position = position })
+	drops[player][id] = { Id = id, Hat = item, Position = position, Kind = if isCharm then "Charm" else "Hat" }
+	event():FireClient(player, { Kind = "Drop", Id = id, Hat = if isCharm then nil else item, Charm = if isCharm then item else nil, Position = position })
 	task.delay(Hats.AutoCollect, function()
 		if player.Parent then
 			self:Collect(player, id)
@@ -92,6 +99,9 @@ function LootService:Collect(player: Player, id: number): (boolean, string?)
 		return false, "Still loading"
 	end
 	list[id] = nil
+	if drop.Kind == "Charm" then
+		return self:CollectCharm(player, id, drop.Hat)
+	end
 	local hat = drop.Hat
 	if TableUtil.Count(data.Hats) >= Hats.Storage then
 		local coins = payOut(player, { hat })
@@ -110,6 +120,29 @@ function LootService:Collect(player: Player, id: number): (boolean, string?)
 		for _, other in ipairs(Players:GetPlayers()) do
 			if other ~= player then
 				Net.Event("Notify"):FireClient(other, { Text = player.DisplayName .. " found " .. Hats.Name(hat) .. "!", Color = rarity.Color, Icon = "Crown" })
+			end
+		end
+	end
+	return true, nil
+end
+
+function LootService:CollectCharm(player: Player, id: number, charm): (boolean, string?)
+	local uid = services.CharmService and services.CharmService:Add(player, charm)
+	if not uid then
+		local shards = Charms.SalvageValue(charm)
+		services.ProgressionService:AddShards(player, shards)
+		event():FireClient(player, { Kind = "Looted", Id = id, Charm = charm, Salvaged = true })
+		notify(player, string.format("Charm storage full (%d)! Salvaged %s for %d Shards.", Charms.Storage, Charms.Name(charm), shards), Color3.fromRGB(255, 150, 120))
+		return true, nil
+	end
+	event():FireClient(player, { Kind = "Looted", Id = id, Uid = uid, Charm = charm })
+	local rarity = Charms.Rarity(charm.R)
+	if rarity.Index >= 3 or charm.S then
+		for _, other in ipairs(Players:GetPlayers()) do
+			if other ~= player then
+				Net.Event("Notify"):FireClient(other, {
+					Text = player.DisplayName .. " found " .. Charms.Name(charm) .. "!", Color = rarity.Color, Icon = "Sparkle", Big = charm.U ~= nil,
+				})
 			end
 		end
 	end
@@ -153,6 +186,14 @@ function LootService:OnKill(enemy, rewarded: { [Player]: any }, killer: Player?)
 			local stats = services.StatService:Get(player)
 			local hat = Hats.Roll(zoneIndex, enemy.Level or 1, if stats then stats.Luck else 0, enemy.IsBoss, rng)
 			self:Drop(player, groundPoint(enemy.Root.Position), hat)
+		end
+		-- charms: very rare from anything, and the Hexfire Torch rarer still from bosses
+		if player.Parent and rng:NextNumber() < Charms.DropChance then
+			local stats = services.StatService:Get(player)
+			self:Drop(player, groundPoint(enemy.Root.Position), Charms.Roll(enemy.Level or 1, if stats then stats.Luck else 0, rng), "Charm")
+		end
+		if player.Parent and enemy.IsBoss and rng:NextNumber() < Charms.TorchChance then
+			self:Drop(player, groundPoint(enemy.Root.Position), Charms.RollUnique("hexfire", enemy.Level or 1, rng), "Charm")
 		end
 	end
 end

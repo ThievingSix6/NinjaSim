@@ -956,6 +956,8 @@ SkillEffects.Tools = {
 require(script.Parent:WaitForChild("ElementEffects")).Register(E, SkillEffects.Tools)
 -- Suit mastery ultimates (Config/Mastery) too (UltimateEffects).
 require(script.Parent:WaitForChild("UltimateEffects")).Register(E, SkillEffects.Tools)
+-- Charm spells (Config/Charms: the Hexfire Torch's Hexfire) too (CharmEffects).
+require(script.Parent:WaitForChild("CharmEffects")).Register(E, SkillEffects.Tools)
 
 SkillEffects.Skills = E
 

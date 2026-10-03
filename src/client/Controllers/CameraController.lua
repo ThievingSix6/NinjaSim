@@ -1,7 +1,8 @@
 --[[
 	CameraController: screen shake (runs right after the default camera update so it
 	never fights it), FOV punches, and short scripted "cinematic" orbits used for
-	tier transformations.
+	tier transformations, and the target lock's framing (LockOnController:Apply,
+	before the shake).
 ]]
 
 local RunService = game:GetService("RunService")
@@ -72,6 +73,8 @@ function CameraController:Start(controllers)
 			local dist = 11 - t * 3
 			local focus = root.Position + Vector3.new(0, 1.5, 0)
 			camera.CFrame = CFrame.lookAt(focus + Vector3.new(math.sin(angle) * dist, 2 + t * 1.5, math.cos(angle) * dist), focus)
+		elseif controllers.LockOnController then
+			controllers.LockOnController:Apply(camera, dt)
 		end
 		sprintFov += (sprintTarget - sprintFov) * math.min(1, dt * 8)
 		camera.FieldOfView = baseFov + fovOffset + sprintFov

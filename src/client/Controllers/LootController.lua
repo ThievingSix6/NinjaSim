@@ -8,6 +8,10 @@
 	after Hats.AutoCollect seconds the server hands it over anyway. "Looted" shows the
 	pickup toast with the hat's name in its rarity colour. "Proc" and "Heal" show the
 	on-hit procs and life steal.
+
+	Charms (Config/Charms) come the same way with `Charm` in the payload instead of
+	`Hat`: the charm object turns in its pillar, and the Hexfire Torch's drop gets a
+	screen-wide callout of its own.
 ]]
 
 local Players = game:GetService("Players")
@@ -17,6 +21,8 @@ local TweenService = game:GetService("TweenService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Hats = require(Shared.Config.Hats)
+local Charms = require(Shared.Config.Charms)
+local CharmBuilder = require(Shared.Visuals.CharmBuilder)
 local Skills = require(Shared.Config.Skills)
 local HatBuilder = require(Shared.Visuals.HatBuilder)
 local Net = require(Shared.Net)
@@ -68,13 +74,39 @@ local function sound(name: string, volume: number?, pitch: number?)
 	end
 end
 
+-- What a drop looks like: { Color, Index (1-5 pillar size), Build(scale) }.
+local function lookOf(payload)
+	if type(payload.Charm) == "table" and Charms.Valid(payload.Charm) then
+		local charm = payload.Charm
+		local rarity = Charms.Rarity(charm.R)
+		return {
+			Color = rarity.Color, Index = math.min(5, rarity.Index + 1),
+			Build = function(scale: number)
+				return CharmBuilder.Build(charm, scale * 0.9)
+			end,
+		}
+	end
+	if type(payload.Hat) == "table" and Hats.Valid(payload.Hat) then
+		local hat = payload.Hat
+		local rarity = Hats.Rarity(hat.R)
+		return {
+			Color = rarity.Color, Index = rarity.Index,
+			Build = function(scale: number)
+				return HatBuilder.Build(hat, scale)
+			end,
+		}
+	end
+	return nil
+end
+
 local function spawnDrop(payload)
-	local hat = payload.Hat
-	if type(hat) ~= "table" or not Hats.Valid(hat) or typeof(payload.Position) ~= "Vector3" or type(payload.Id) ~= "number" then
+	local look = lookOf(payload)
+	if not look or typeof(payload.Position) ~= "Vector3" or type(payload.Id) ~= "number" then
 		return
 	end
-	local rarity = Hats.Rarity(hat.R)
-	local color = rarity.Color
+	local hat = payload.Hat or payload.Charm
+	local rarity = { Index = look.Index }
+	local color = look.Color
 	local pos = payload.Position
 	local holder = Instance.new("Folder")
 	holder.Name = "HatDrop" .. payload.Id
@@ -120,7 +152,7 @@ local function spawnDrop(payload)
 	end
 
 	-- the hat itself, a little bigger than worn, bobbing and turning
-	local model = HatBuilder.Build(hat, 1.6)
+	local model = look.Build(1.6)
 	if model then
 		model:PivotTo(CFrame.new(pos + Vector3.new(0, 2.4, 0)))
 		model.Parent = holder
@@ -172,12 +204,38 @@ local function removeDrop(id: number, flyTo: BasePart?)
 	end
 end
 
+local function onCharmLooted(charm, salvaged: boolean)
+	if salvaged or not Charms.Valid(charm) then
+		return
+	end
+	local rarity = Charms.Rarity(charm.R)
+	local size = Charms.Size(charm)
+	local nc = controllers.NotificationController
+	local sub = rarity.Name .. " " .. size.Name .. "  -  Inventory (I)"
+	if charm.S then
+		sub = Charms.Lines(charm)[1][1] .. "  -  Inventory (I)"
+	end
+	nc:Callout(Charms.Name(charm), sub, rarity.Color, Charms.Icon(charm), if charm.U or charm.S then 6 else 3.5)
+	sound(if charm.U or rarity.Index >= 3 then "TierUp" else "Purchase", 0.8, 1.1)
+	if charm.U and controllers.EffectsController then
+		controllers.EffectsController:Flash(rarity.Color, 0.4)
+		controllers.EffectsController:CharacterBurst(Charms.Hexfire.Color, true)
+	end
+	if controllers.HUD and controllers.HUD.SetBadge then
+		controllers.HUD:SetBadge("Inventory", true)
+	end
+end
+
 local function onLooted(payload)
 	local hat = payload.Hat
 	local character = player.Character
 	local root = character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
 	if type(payload.Id) == "number" then
 		removeDrop(payload.Id, root)
+	end
+	if type(payload.Charm) == "table" then
+		onCharmLooted(payload.Charm, payload.Salvaged == true)
+		return
 	end
 	if type(hat) ~= "table" or not Hats.Valid(hat) then
 		return

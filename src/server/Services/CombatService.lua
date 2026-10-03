@@ -101,6 +101,10 @@ local function onAttack(player: Player, comboIndex: any)
 	look = if look.Magnitude > 0 then look.Unit else Vector3.new(0, 0, -1)
 	-- an awakened mastery Avatar throws an elemental wave with every swing
 	services.SkillService:AvatarSwing(player, root.Position, look)
+	-- the Hexfire Torch (Config/Charms): a chance on every attack to roll a tendril of flame
+	if (stats.Hexfire or 0) > 0 and math.random() < stats.Hexfire then
+		services.SkillService:CastHexfire(player, root.Position, look)
+	end
 	local candidates = services.EnemyService:InRange(zone.Id, root.Position, Balance.AttackRange + move.Reach)
 	local maxTargets = Balance.MaxTargetsPerSwing + move.ExtraTargets
 

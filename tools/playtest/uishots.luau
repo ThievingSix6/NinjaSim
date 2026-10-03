@@ -43,6 +43,22 @@ return function(E)
 	data.Upgrades.XP = 4
 	data.Upgrades.Damage = 7
 	DS:Changed(player, "Upgrades")
+	-- a few charms in the grid and the stash (Config/Charms)
+	local Charms = E.shared("Config.Charms")
+	local CS = E.sm("CharmService")
+	for _, spec in ipairs({ { "Grand", "Legendary", "shuriken_storm" }, { "Large", "Rare" }, { "Small", "Magic" }, { "Small", "Mythic" }, { "Grand", "Magic" }, { "Large", "Magic" }, { "Small", "Rare" } }) do
+		CS:Add(player, Charms.Roll(20, 0, nil, spec[1], spec[2], spec[3]))
+	end
+	CS:Add(player, Charms.RollUnique("hexfire", 40))
+	local spare = CS:Add(player, Charms.Roll(20, 0, nil, "Grand", "Rare", "any"))
+	if spare then
+		data.Charms[spare].X, data.Charms[spare].Y = nil, nil
+	end
+	local spare2 = CS:Add(player, Charms.Roll(20, 0, nil, "Small", "Legendary"))
+	if spare2 then
+		data.Charms[spare2].X, data.Charms[spare2].Y = nil, nil
+	end
+	DS:Changed(player, "Charms")
 	task.wait(1)
 	print("state: level", data.Level, "coins", data.Coins, "pets", #data.EquippedPets)
 	task.wait(15) -- let the daily reward popup, hatch overlays and toasts clear
@@ -54,7 +70,7 @@ return function(E)
 	end
 	shot("hud")
 	local only = process.env.UISHOTS_ONLY
-	for _, name in ipairs({ "Shop", "Pets", "Inventory", "Rebirth", "Upgrades", "Areas", "Gifts", "Trophies", "Codes", "Settings", "Skills", "Suits", "Mutate", "Trade" }) do
+	for _, name in ipairs({ "Shop", "Pets", "Inventory", "Armory", "Rebirth", "Upgrades", "Areas", "Gifts", "Trophies", "Codes", "Settings", "Skills", "Suits", "Mutate", "Trade" }) do
 		if not only or string.find(only, name, 1, true) then
 			MM:Open(name)
 			shot(string.lower(name))

@@ -146,7 +146,16 @@ function CombatController:Swing(buffer: boolean?)
 	-- aim assist: turn toward the closest enemy in reach, but only one already
 	-- roughly in front (no snapping round to cut what's behind you)
 	local target, dist = nearestEnemy(Balance.AttackRange + math.max(3, move.Reach))
-	if target and target.PrimaryPart then
+	local locked = controllers.LockOnController and controllers.LockOnController:Target()
+	if locked and locked.PrimaryPart then
+		-- a locked target is always the one you swing at, wherever it is in reach
+		local lp = locked.PrimaryPart.Position
+		local d = Vector3.new(lp.X - root.Position.X, 0, lp.Z - root.Position.Z).Magnitude
+		if d <= Balance.AttackRange + math.max(3, move.Reach) + 4 then
+			target, dist = locked, d
+		end
+	end
+	if target and target ~= locked and target.PrimaryPart then
 		local tp = target.PrimaryPart.Position
 		local to = Vector3.new(tp.X - root.Position.X, 0, tp.Z - root.Position.Z)
 		local facing = Vector3.new(root.CFrame.LookVector.X, 0, root.CFrame.LookVector.Z)

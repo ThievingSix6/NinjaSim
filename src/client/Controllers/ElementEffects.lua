@@ -184,7 +184,7 @@ local function firstFor(tag): boolean
 end
 
 local function level(ctx): number
-	return math.clamp(ctx.Level or 1, 1, Skills.MaxLevel)
+	return math.clamp(ctx.Level or 1, 1, Skills.HardCap)
 end
 
 local function fieldTime(ctx): number

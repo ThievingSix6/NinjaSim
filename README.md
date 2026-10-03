@@ -27,7 +27,8 @@ Fight enemies to earn XP and Coins. Level up to unlock ninja ranks from Brown Ni
 | Dodge roll (the way you move; standing still hops back) | `Q` or `Left Ctrl` | Circle (PlayStation) / B (Xbox) / Roll button |
 | Skills (4 slots) / Skills menu | `1` `2` `3` `4` / `K` | LB, RB, Y, LT / skill bar on the HUD |
 | Suit ultimates (unlocked by mastery) | `Z` `X` `C` `V` | D-pad up, right, down, left / ultimate bar on the HUD |
-| Shop / Pets / Inventory | `G` / `P` / `I` | HUD buttons |
+| Lock on to the nearest enemy (toggle; flick the right stick to switch) | Middle mouse or `L` | R3 / LOCK button |
+| Shop / Pets / Inventory (gear and charms) | `G` / `P` / `I` | HUD buttons |
 | Rebirth / Upgrades / Areas / Trophies | `R` / `U` / `M` / `T` | HUD buttons |
 | Suits / Trade | `N` / `Y` | HUD buttons |
 | Sprint (x1.4 speed) | Hold `Shift` | Click L3 / always on for touch |
@@ -42,6 +43,7 @@ Fight enemies to earn XP and Coins. Level up to unlock ninja ranks from Brown Ni
   - **Souls-style pacing** (2026-10-02): swings are slower and heavier (`Combo.Pace`, `Balance.BaseAttackInterval` 0.62 s), each one cuts at most 4 enemies, you walk slowly while a swing plays, and a press during a swing is queued. No weapon reaches further round you than the katana: nunchaku, spear and claw spins lost their extra reach, and only one move per weapon hits all around.
   - **Stamina** (`Balance.Stamina`, `Util/Stamina`): every swing (finishers more) and every dodge spends it; it refills after a short pause. The bar is under your health. The server keeps its own pool and refuses actions it can't cover.
   - **Dodge roll** (`DodgeController`, `CombatService`): Circle / B, `Q` or `Left Ctrl`. Rolls 17 studs the way you move (a backstep standing still), with i-frames that make enemy and boss hits miss ("DODGED!"). You can roll out of a swing's recovery but not its windup.
+  - **Lock-on** (`LockOnController`): middle mouse or `L` (R3 on a pad, LOCK on touch) locks on to the nearest enemy in front. The camera keeps it framed behind you, your ninja keeps facing it (so you strafe and roll around it), a reticle marks it and swings aim at it. Flick the right stick to switch target; when it dies the lock jumps to the next one.
   - Enemies wind their attacks up for 0.62 s (`Balance.EnemyWindup`) so you can read them and roll through.
 - **Skills:** 12 ninja and samurai skills for crowd fights, on 4 hotkey slots with a skill bar (cooldown sweeps) above the XP bar.
   - Shuriken Storm, Whirlwind Slash, Iaido Dash, Wind Step, Smoke Bomb, Kunai Rain, Dragon Flame, Oni Quake, Lightning Blade, Shadow Clone, Bushido Spirit and the Thousand Cuts ultimate: cones, circles, lines, chains, clones, dashes and buffs.
@@ -93,7 +95,7 @@ Fight enemies to earn XP and Coins. Level up to unlock ninja ranks from Brown Ni
     - Admin panel **Give Pet**: type `golden fox` (or `Rainbow Jade Dragon`) to give that pet, or just `Giant` to make the selected player's next hatch Giant.
     - Previews: `SCENARIO=petshots lune run run.luau` in `tools/playtest`, then `python3 tools/blender/pet_previews.py /tmp/claude-0/petshots/pets.json assets/previews/pets/mutations --ui /tmp/claude-0/petprev/ui`. Pass `UIPREVIEW_ASSETS=/tmp/claude-0/petprev/ui/assets.json` to `tools/uipreview/shoot.mjs` and the UI shots show the rendered pets.
 - **Mutation Machine** (`MutationService`, by the village spawn): reroll the mutation of a pet or a hat. A roll costs Coins (more for rarer items), a Lucky Roll 25 Spirit Shards and makes Rainbow, Giant, Celestial and Secret three times as likely. Every roll gives a mutation, sometimes a worse one (rerolling a Rainbow or better asks first). **Secret** (x50 pet stats, a black glitch with shifting neon seams, runes and a galaxy haze) only comes from the machine. Hats take mutations too: x1.1 (Big) up to x3 (Secret) on all their stats, with a name prefix and a recolour.
-- **Trading** (`TradeService`, Trade menu, `Y`): invite a player in the server, both put up to 9 pets and hats on the table, both press Ready; any change un-readies both, and after a 3 s countdown the server checks everything again and swaps the items in one step, then saves both players.
+- **Trading** (`TradeService`, Trade menu, `Y`): invite a player in the server, both put up to 9 pets, hats and charms on the table, both press Ready; any change un-readies both, and after a 3 s countdown the server checks everything again and swaps the items in one step, then saves both players.
 - **Suits and mastery** (Blox Fruits style; `Config/Mastery`, `MasteryService`, Suits menu `N`): wear any ninja suit you have reached (it only changes your look). The worn suit gains mastery from kills (bosses give much more) up to 100: +0.5% damage per level, and four ultimates in the suit's element, cast with `Z X C V` from the ultimate bar:
   - Mastery 25, movement: an invulnerable 60 stud rush through everything, bursting at the end.
   - Mastery 50, long range: a 140 stud beam that pierces everything on it five times.
@@ -107,7 +109,11 @@ Fight enemies to earn XP and Coins. Level up to unlock ninja ranks from Brown Ni
   - Hats menu (`H` or the HUD button): rarity grid, a tooltip with base stats, affixes, proc and a green/red comparison with the worn hat, Equip, Lock, Salvage (Coins, plus Shards for Legendary+) and bulk salvage up to Common / Magic / Rare. 60 hats max; a pickup with full storage is salvaged.
   - The hat is worn on the head, fitted over the ninja suit's own head (`Visuals/HatBuilder.lua`). An imported mesh named `Hat_<id>` replaces the part-built hat.
   - Admin panel: **Drop Hat** drops a hat at the selected player; type a rarity in the box (or leave it empty for a normal roll).
-- **Inventory:** equip or unequip, compare against what you hold, sort by best, rarity or name, and favourites.
+- **Inventory** (`I`): a Diablo II style "ragdoll". The paper doll shows your hat, katana, suit and pets (click a slot to open its menu: Hats, Armory, Suits, Pets) and what your charms add up to. Next to it is the 10 x 4 charm grid with the stash under it: click a charm to pick it up, click a cell to put it down (the cells it would cover light green, or red when it doesn't fit).
+- **Charms** (`Config/Charms`, `CharmService`; Diablo II charms): Small 1x1, Large 1x2 and Grand 1x3, in Magic, Rare, Legendary and Mythic, with random hat affixes (damage, crit, HP, speed, attack speed, XP, coins, luck, regen, life steal) scaled by size, rarity and the enemy's level. They only count while they sit in the grid. A third of Grand charms roll **+1 to +5 to a skill**, the only way past the skill level cap (bought skills stop at 5; charms push them up to 20, each level +25% damage and 3% off the cooldown). Every kill has a **0.3%** chance to drop one (light pillar, like hats). Charms can be traded, locked, and salvaged for Spirit Shards.
+  - **Hexfire Torch** (unique Large charm, **0.01%** per boss kill): +1-3 to all skills, +10-20% damage and max HP, and every attack has a **25%** chance to cast **Hexfire**, a rolling tendril of flame that snakes 44 studs forward, burning everything it rolls over. Only one torch counts.
+  - Admin panel **Drop Charm**: type a rarity, a size, `Skill` or `Torch`.
+- **Armory** (Inventory's weapon slot): your katanas and cosmetics: equip or unequip, compare against what you hold, sort by best, rarity or name, and favourites.
 - **Guide:** a glowing trail and marker lead new players to their next goal (training dummies, the first egg, the next gate, the first boss). The Next Goal card opens the menu that finishes the goal. It can be turned off in Settings.
 - **Free gifts:** 8 gifts unlock over 45 minutes of play each session (Coins that scale with level, boosts and Shards). The HUD shows a countdown and a badge when one is ready.
 - **Daily streak:** a reward every day you join, cycling over 7 days (day 7 gives Spirit Shards). Missing a day resets it.
@@ -115,7 +121,7 @@ Fight enemies to earn XP and Coins. Level up to unlock ninja ranks from Brown Ni
 - **Server events:** every 10 minutes the whole server gets a 3-minute Coin Frenzy, XP Storm or Ninja Rush, with a banner and a HUD countdown (`Config/Events.lua`).
 - **Play with friends:** +10% Coins and XP for each friend in the server (up to +30%), shown on the HUD.
 - **Shoutouts:** the server announces Legendary+ hatches, rare pet mutations, new high ranks and rebirths to everyone.
-- **Top Ninjas board:** a global leaderboard by the village spawn (Rebirths, then Level), stored in an OrderedDataStore. Without DataStore access it ranks the players in the current server.
+- **Top Ninjas board:** a global leaderboard by the village spawn (Rebirths, then Level), stored in an OrderedDataStore, with each ninja's avatar headshot. The #1 ninja's avatar stands as a statue on a gold pedestal beside it. Without DataStore access it ranks the players in the current server.
 - **Codes:** `RELEASE`, `NINJA`, `SHURIKEN`, `SPIRIT`, `FOXFRIEND` (see `src/shared/Config/Codes.lua`).
 - **Settings:** music and SFX volume, guide trail, damage numbers, screen shake, other players' pets, low graphics, auto swing. There's also a lifetime stats panel.
 
@@ -150,11 +156,11 @@ src/shared/               ReplicatedStorage.Shared
   Net.lua                 remotes
 src/server/               ServerScriptService.Server
   Main.server.lua         boots the world + services
-  Services/               Data, Stat, Zone, Character, Progression, Enemy, Boss, Combat, Skill, Mastery, Rebirth, Shop, Pet, Mutation, Trade, Inventory, Event, Gift, Leaderboard, Achievement, Request (+ ElementCasts, UltimateCasts)
+  Services/               Data, Stat, Zone, Character, Progression, Enemy, Boss, Combat, Skill, Mastery, Rebirth, Shop, Pet, Mutation, Trade, Charm, Inventory, Event, Gift, Leaderboard, Achievement, Request (+ ElementCasts, UltimateCasts)
   World/                  WorldBuilder, ZoneDecor, Props
 src/client/               StarterPlayerScripts.Client
   Main.client.lua         boots the controllers
-  Controllers/            Data, UI, Sound, Camera, Notification, Effects, Animation, Combat, Dodge, Skill, Ultimate, Trade, EnemyUI, Boss, Pet, Lighting, World, Guide
+  Controllers/            Data, UI, Sound, Camera, Notification, Effects, Animation, Combat, Dodge, LockOn, Skill, Ultimate, Trade, Loot, EnemyUI, Boss, Pet, Lighting, World, Guide
   UI/                     Kit (widgets), Theme, HUD, MenuManager, MenuCommon, Overlays, Menus/*
 tools/playtest/           headless playtest (see below)
 ```
@@ -342,7 +348,7 @@ checks the rank on every command and prints each one in the server Output.
 ## UI scale
 
 `UI_SIZE` in `src/client/Controllers/UIController.lua` (0.88) sets how big the HUD and
-menus are. The HUD stretches to the real screen edges (inside the device safe area) at
+menus are; `LAYER_SIZE` shrinks single layers on top of that (the HUD is 85%). The HUD stretches to the real screen edges (inside the device safe area) at
 any size.
 
 ## Checking the code

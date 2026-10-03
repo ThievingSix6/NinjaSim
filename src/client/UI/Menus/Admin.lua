@@ -26,6 +26,7 @@ local PLAYER_COMMANDS = {
 	{ "GivePet", "Give Pet", "Orange", "Pets" },
 	{ "ResetProgress", "Reset Progress", "Red", "Rebirth" },
 	{ "DropHat", "Drop Hat", "Orange", "Crown" }, -- box: rarity (Common..Mythic), empty = normal roll
+	{ "DropCharm", "Drop Charm", "Orange", "Sparkle" }, -- box: rarity, size, Skill or Torch; empty = normal roll
 	{ "Mastery", "Set Mastery", "Gold", "Star" }, -- box: mastery level (1-100) for the worn suit
 }
 

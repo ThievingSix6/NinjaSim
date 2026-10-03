@@ -121,4 +121,14 @@ function Stats.Compute(data)
 end
 -- ===== end Hats =====
 
+-- ===== Charms (Config/Charms, CharmService) =====
+-- Every charm placed in the inventory grid: the same stats as hats, plus SkillBonus
+-- ({ [skillId] = extra levels }), AllSkills and Hexfire (chance per attack).
+local Charms = require(Config.Charms)
+local computeWithHats = Stats.Compute
+function Stats.Compute(data)
+	return Charms.ApplyToStats(computeWithHats(data), data, Balance)
+end
+-- ===== end Charms =====
+
 return Stats

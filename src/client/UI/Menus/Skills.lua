@@ -198,7 +198,9 @@ function Menu.Build(ctx)
 	local function showDetail(data, def)
 		local level = data.Skills[def.Id]
 		local owned = level ~= nil
-		local shownLevel = level or 1
+		-- charm levels (Config/Charms) count in every number shown
+		local effective = Skills.Effective(level, DataController:GetStats(), def.Id)
+		local shownLevel = effective or 1
 		local meets, reason = Skills.MeetsRequirement(def, data)
 		local lines = {
 			{ "Damage", damageText(def, shownLevel), Theme.Red, "Katana" },
@@ -215,7 +217,11 @@ function Menu.Build(ctx)
 		elseif def.Duration then
 			table.insert(lines, { "Lasts", string.format("%.0fs", Skills.Duration(def, shownLevel)), Theme.Green, "Clock" })
 		end
-		table.insert(lines, 1, { "Level", if owned then level .. " / " .. Skills.MaxLevel else "Not learned", if owned then Theme.Gold else Theme.Muted, "Star" })
+		local levelText = if owned then level .. " / " .. Skills.MaxLevel else "Not learned"
+		if owned and effective and effective > level then
+			levelText = string.format("%d  (+%d charms)", effective, effective - level)
+		end
+		table.insert(lines, 1, { "Level", levelText, if owned then Theme.Gold else Theme.Muted, "Star" })
 
 		local actions = {}
 		if not owned then
@@ -384,7 +390,12 @@ function Menu.Build(ctx)
 			end
 			if level then
 				card.SetLocked(nil)
-				card.SetSub("Lv " .. level .. (if level >= Skills.MaxLevel then " MAX" else ""), Theme.Gold)
+				local effective = Skills.Effective(level, DataController:GetStats(), def.Id) or level
+				if effective > level then
+					card.SetSub("Lv " .. effective .. " (+" .. (effective - level) .. ")", Theme.Orange)
+				else
+					card.SetSub("Lv " .. level .. (if level >= Skills.MaxLevel then " MAX" else ""), Theme.Gold)
+				end
 			else
 				local currency, price = Skills.Price(def)
 				-- a lock over the card, the requirement in its pill, the title left readable
@@ -409,7 +420,7 @@ function Menu.Build(ctx)
 		end
 	end
 
-	for _, key in ipairs({ "Skills", "SkillSlots", "Coins", "Shards", "Level", "BestTier", "Rebirths" }) do
+	for _, key in ipairs({ "Skills", "SkillSlots", "Coins", "Shards", "Level", "BestTier", "Rebirths", "Charms" }) do
 		DataController:OnChange(key, function()
 			if window.Visible then
 				refresh()

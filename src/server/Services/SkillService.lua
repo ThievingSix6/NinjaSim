@@ -16,6 +16,10 @@
 	The suit mastery ultimates (Config/Mastery: Z X C V) cast through CastUltimate and
 	UltimateCasts; an awake Avatar turns sword swings into waves (AvatarSwing).
 
+	Charms (Config/Charms) add skill levels: casts use Skills.Effective (bought level +
+	charm levels, past MaxLevel up to HardCap). The Hexfire Torch's spell casts through
+	CastHexfire (CombatService rolls it on every attack).
+
 	Requests (RequestService): BuySkill, UpgradeSkill, EquipSkill, UnequipSkill, CastSkill, CastUltimate.
 	Events: SkillHits (hit results, to the caster and nearby players),
 	        SkillCast (another player cast: plays their effects).
@@ -28,6 +32,7 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Skills = require(Shared.Config.Skills)
 local Tiers = require(Shared.Config.Tiers)
 local Mastery = require(Shared.Config.Mastery)
+local Charms = require(Shared.Config.Charms)
 local Net = require(Shared.Net)
 
 local SkillService = {}
@@ -642,7 +647,7 @@ function SkillService:Cast(player: Player, slot: number, aim: any): (boolean, an
 	end
 	local id = data.SkillSlots[slot]
 	local def = Skills.Get(id)
-	local level = def and data.Skills[def.Id]
+	local level = def and Skills.Effective(data.Skills[def.Id], services.StatService:Get(player), def.Id)
 	if not def or not level then
 		return false, "No skill in that slot"
 	end
@@ -692,7 +697,7 @@ function SkillService:CastAt(player: Player, skillId: string, position: Vector3,
 		return false, nil
 	end
 	local data = services.DataService:Get(player)
-	local lv = math.clamp(level or (data and data.Skills[def.Id]) or 1, 1, Skills.MaxLevel)
+	local lv = math.clamp(level or (data and data.Skills[def.Id]) or 1, 1, Skills.HardCap)
 	local dir = flat(position - root.Position)
 	dir = if dir.Magnitude > 0.01 then dir.Unit else flat(root.CFrame.LookVector).Unit
 	local ctx = {
@@ -766,6 +771,60 @@ function SkillService:AvatarSwing(player: Player, origin: Vector3, dir: Vector3)
 	end
 end
 
+-- The Hexfire Torch (Config/Charms): a tendril of flame rolls forward from `origin`
+-- a segment at a time, burning each enemy it rolls over once (then a few burn ticks).
+-- Its power grows with the charm grid's +all skills. The caller rolls the chance.
+local hexfireReady: { [Player]: number } = {}
+function SkillService:CastHexfire(player: Player, origin: Vector3, dir: Vector3): boolean
+	local d = Charms.Hexfire
+	local now = os.clock()
+	if now < (hexfireReady[player] or 0) or not rootOf(player) then
+		return false
+	end
+	hexfireReady[player] = now + d.Cooldown
+	dir = flat(dir)
+	dir = if dir.Magnitude > 0.01 then dir.Unit else Vector3.new(0, 0, -1)
+	local stats = services.StatService:Get(player)
+	local power = Skills.Power(1 + (stats and stats.AllSkills or 0))
+	local ctx = { Player = player, Character = player.Character, Def = d, Level = 1, Power = power, Origin = origin, Dir = dir }
+	local length = clearDistance(origin, dir, d.Length)
+	local seg = length / d.Segments
+	local seed = math.random(1, 1e6)
+	local burned: { [any]: boolean } = {}
+	for i = 1, d.Segments do
+		later(d.Step * i, function()
+			if ctx.Player.Character ~= ctx.Character then
+				return
+			end
+			local from = origin + dir * seg * (i - 1)
+			local fresh = {}
+			for _, enemy in ipairs(line(player, from, dir, seg, d.Width, d.MaxTargets)) do
+				if not burned[enemy] then
+					burned[enemy] = true
+					table.insert(fresh, enemy)
+				end
+			end
+			if #fresh == 0 then
+				return
+			end
+			strike(ctx, fresh, d.Damage, { From = from, Knockback = 0.5, Stun = 0.25 })
+			for tick = 1, d.BurnTicks do
+				later(0.5 * tick, function()
+					if ctx.Player.Parent then
+						strike(ctx, fresh, d.Burn, { Tag = "Burn" })
+					end
+				end)
+			end
+		end)
+	end
+	local payload = { Player = player, Skill = d.Id, Level = 1, Origin = origin, Dir = dir, Info = { Length = length, Seed = seed }, Proc = true }
+	Net.Event("SkillCast"):FireClient(player, payload)
+	for _, other in ipairs(othersNear(player, origin)) do
+		Net.Event("SkillCast"):FireClient(other, payload)
+	end
+	return true
+end
+
 function SkillService:Init(registry)
 	services = registry
 end
@@ -783,6 +842,7 @@ function SkillService:Start()
 	end)
 	Players.PlayerRemoving:Connect(function(player)
 		state[player] = nil
+		hexfireReady[player] = nil
 		UltimateCasts.Clear(player)
 	end)
 end
