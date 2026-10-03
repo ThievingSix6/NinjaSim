@@ -53,6 +53,7 @@ local ORDER = {
 	"MutationService",
 	"TradeService",
 	"DuelService",
+	"PartyService",
 	"TempleService",
 	"InventoryService",
 	"EventService",

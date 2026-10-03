@@ -499,6 +499,9 @@ local function onEnemyDied(info)
 	if rewards.Double then
 		controllers.EffectsController:FloatText("DOUBLE DROP!", controllers.Theme.Gold, pos - Vector2.new(0, 34), 30)
 	end
+	if rewards.PartyBonus then
+		controllers.EffectsController:FloatText("+" .. Format.Abbrev(rewards.PartyBonus) .. " party bonus", controllers.Theme.Green, pos + Vector2.new(0, 64), 22)
+	end
 	if rewards.Shards then
 		controllers.EffectsController:FloatText("+" .. rewards.Shards .. " 💎", controllers.Theme.Shard, pos + Vector2.new(0, 34), 30)
 	end

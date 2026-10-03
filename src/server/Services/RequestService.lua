@@ -178,6 +178,19 @@ end
 function handlers.DuelForfeit(player)
 	return services.DuelService:Forfeit(player)
 end
+-- parties (PartyService)
+function handlers.PartyInvite(player, userId)
+	return services.PartyService:Invite(player, userId)
+end
+function handlers.PartyRespond(player, userId, accept)
+	return services.PartyService:Respond(player, userId, accept == true)
+end
+function handlers.PartyLeave(player)
+	return services.PartyService:Leave(player)
+end
+function handlers.PartyKick(player, userId)
+	return services.PartyService:Kick(player, userId)
+end
 -- the Cursed Temple (TempleService)
 function handlers.TempleStart(player, floor)
 	return services.TempleService:StartRun(player, if type(floor) == "number" then floor else 1)

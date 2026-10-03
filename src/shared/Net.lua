@@ -42,6 +42,7 @@ Net.Events = {
 	"HeavyCharge", -- client -> server: started charging a heavy attack (CombatService)
 	"HeavyAttack", -- client -> server: released the charged heavy attack
 	"Duel", -- duel invites, start, hits and results (DuelService)
+	"Party", -- party invites, members and shared XP (PartyService)
 	"Temple", -- Cursed Temple gate, floors, clears and run end (TempleService)
 }
 

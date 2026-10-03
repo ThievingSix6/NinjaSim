@@ -316,6 +316,9 @@ function EnemyService:Kill(enemy, killer: Player?)
 			warn("[EnemyService] loot: " .. tostring(err))
 		end
 	end
+	if services.PartyService and next(rewarded) then
+		services.PartyService:ShareKill(enemy, rewarded) -- partied players nearby share the XP
+	end
 
 	local position = enemy.Root.Position
 	local killEffect = ""

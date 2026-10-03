@@ -91,6 +91,22 @@ return function(E)
 		task.wait(1.2)
 		shot("hud_cooldown")
 	end
+	if only and string.find(only, "Party", 1, true) then
+		-- the party panel, with two fake members (the panel only reads the list)
+		local Net = E.shared("Net")
+		local list = { { UserId = player.UserId, Name = player.DisplayName, Leader = true }, { UserId = 901, Name = "ShadowFox" }, { UserId = 902, Name = "KunaiQueen_77" } }
+		local ok = pcall(function()
+			for _, conn in ipairs(E.connectionsOf and E.connectionsOf(Net.Event("Party").OnClientEvent) or {}) do
+				conn({ Type = "Update", Members = list, Max = 4 })
+			end
+		end)
+		if not ok or #E.cm("Controllers.PartyController"):Members() == 0 then
+			E.sm("PartyService") -- fall back to the server path
+			Net.Event("Party"):FireClient(player, { Type = "Update", Members = list, Max = 4 })
+		end
+		task.wait(0.5)
+		shot("hud_party")
+	end
 	if not only or string.find(only, "Toast", 1, true) then
 		for _, c in ipairs(toasts.Root:GetDescendants()) do
 			if c.Name == "Toasts" then

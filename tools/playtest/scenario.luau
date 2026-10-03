@@ -1709,6 +1709,61 @@ return function(E)
 		end
 	end)
 
+	step("party", function()
+		local DC = E.cm("Controllers.DataController")
+		local PC = E.cm("Controllers.PartyController")
+		local DS = E.sm("DataService")
+		local PS = E.sm("PartyService")
+		local ES = E.sm("EnemyService")
+		local friend = E.addServerPlayer("Buddy", 781)
+		for _ = 1, 60 do
+			if DS:Get(friend) and friend.Character then
+				break
+			end
+			task.wait(0.1)
+		end
+		local mine, theirs = DS:Get(player), DS:Get(friend)
+		if not theirs then
+			report("scenario", "the party friend never loaded")
+			return
+		end
+		print("invite:", PS:Invite(friend, player.UserId))
+		print("accept:", DC:Request("PartyRespond", 781, true))
+		task.wait(0.3)
+		print("party members on the client", #PC:Members(), "| same party", PS:SameParty(player, friend))
+		if not PS:SameParty(player, friend) or #PC:Members() ~= 2 then
+			report("scenario", "accepting a party invite didn't make a party")
+		end
+		-- the friend kills an enemy next to the player: the player gets a share of the XP
+		local enemy
+		for _, e in pairs(ES.All) do
+			if not e.Dead and not e.IsBoss then
+				enemy = e
+				break
+			end
+		end
+		local root = player.Character.HumanoidRootPart
+		E.sm("ZoneService"):MarkTeleported(player)
+		root.CFrame = CFrame.new(enemy.Root.Position + Vector3.new(10, 0, 0))
+		local xp0, lvl0 = mine.XP, mine.Level
+		local fxp0, flvl0 = theirs.XP, theirs.Level
+		enemy.Contrib[friend] = enemy.MaxHealth
+		ES:Kill(enemy, friend)
+		task.wait(0.2)
+		local gained = (mine.XP - xp0) + (mine.Level - lvl0) * 1e9
+		print("player XP from the friend's kill:", mine.XP - xp0, "levels", mine.Level - lvl0, "| friend XP", theirs.XP - fxp0, "levels", theirs.Level - flvl0)
+		if gained <= 0 then
+			report("scenario", "a party member's kill shared no XP")
+		end
+		print("leave:", DC:Request("PartyLeave"))
+		task.wait(0.2)
+		print("after leaving: same party", PS:SameParty(player, friend), "| client members", #PC:Members())
+		if PS:SameParty(player, friend) or #PC:Members() ~= 0 then
+			report("scenario", "leaving the party didn't take")
+		end
+		E.removeServerPlayer(friend)
+	end)
+
 	step("ragdolls", function()
 		local AC = E.cm("Controllers.AnimationController")
 		print("ragdolls made so far", AC.RagdollCount)
