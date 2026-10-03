@@ -835,12 +835,15 @@ end
 -- The ruined temple of the Cursed Temple zone. Its gate (the glowing seal under the
 -- black torii, a ProximityPrompt tagged TempleGate) opens the Temple menu: the way down
 -- into the 100 floors (TempleService).
-local function cursedTemple(ctx, x: number, z: number)
+local function cursedTemple(ctx, x: number, z: number, yaw: number)
 	local f, rng = ctx.Folder, ctx.Rng
 	local stone, dark, blood = rgb(70, 58, 60), rgb(30, 24, 26), rgb(150, 18, 24)
+	-- the gate stands 26 studs out from the hall's front, turned by yaw
+	local front = CFrame.Angles(0, yaw, 0) * Vector3.new(0, 0, -26)
+	local gx, gz = x + front.X, z + front.Z
 	ctx.Claim(x, z, 26)
-	ctx.Claim(x, z - 26, 14)
-	local hall = ctx.At(x, z, 0, 0.5)
+	ctx.Claim(gx, gz, 14)
+	local hall = ctx.At(x, z, yaw, 0.5)
 	plinth(f, hall, 40, 28, stone, Enum.Material.Cobblestone, 14)
 	Props.House(f, hall * CFrame.new(0, 0.6, 4), { Width = 30, Depth = 18, Height = 12, Wall = rgb(64, 50, 50), Wood = dark, Roof = rgb(36, 28, 30), RoofHeight = 10, RoofTrim = blood })
 	-- broken pillars along the front steps, some fallen
@@ -857,7 +860,7 @@ local function cursedTemple(ctx, x: number, z: number)
 		Props.Banner(f, hall * CFrame.new(side * 11, 0.6, -6), blood, rgb(20, 10, 10))
 	end
 	-- the gate: a black torii over a glowing seal in the ground
-	local gate = ctx.At(x, z - 26, 0, 0.3)
+	local gate = ctx.At(gx, gz, yaw, 0.3)
 	Props.Torii(f, gate, 14, 16, rgb(26, 16, 18))
 	local seal = Props.Part(f, Vector3.new(0.6, 12, 12), gate * CFrame.new(0, 0.35, 0) * CFrame.Angles(0, 0, math.pi / 2), rgb(255, 40, 30), Enum.Material.Neon, Enum.PartType.Cylinder)
 	seal.Transparency = 0.25
@@ -882,10 +885,9 @@ function ZoneDecor.Cursed(ctx)
 	entranceArch(ctx, function(cf)
 		Props.Torii(f, cf, 16, 18, rgb(26, 16, 18))
 	end)
-	-- beside the road just past the spawn, gate facing the road (2026-10-03: it sat
-	-- against the mountain, hard to reach)
-	local tx, tz = findSpot(ctx, -140, 48, 22, { MaxSlope = 0.5 }, 28)
-	cursedTemple(ctx, tx or -140, tz or 48)
+	-- turned 60 degrees left so the gate opens toward the valley, not the mountain
+	local tx, tz = findSpot(ctx, -150, 95, 22, { MaxSlope = 0.5 }, 48)
+	cursedTemple(ctx, tx or -150, tz or 95, math.rad(60))
 	ctx.RoadSide(34, 12, function(cf)
 		Props.StoneLantern(f, cf, rgb(255, 50, 40))
 	end)
