@@ -195,6 +195,22 @@ local COMMANDS: { [string]: { Owner: boolean?, Target: boolean?, Run: (Player, P
 			return true, string.format("%s %d shards to %s", if n > 0 then "Gave" else "Took", math.abs(n), (target :: Player).DisplayName)
 		end,
 	},
+	Seals = {
+		Target = true,
+		Run = function(_admin, target, value)
+			local n = amountOf(value)
+			if not n or n == 0 then
+				return false, "Type an amount first"
+			end
+			local data = services.DataService:Get(target :: Player)
+			if not data then
+				return false, "Still loading"
+			end
+			data.Seals = math.max(0, (data.Seals or 0) + n)
+			services.DataService:Changed(target :: Player, "Seals")
+			return true, string.format("%s %d Cursed Seals to %s", if n > 0 then "Gave" else "Took", math.abs(n), (target :: Player).DisplayName)
+		end,
+	},
 	Levels = {
 		Target = true,
 		Run = function(_admin, target, value)

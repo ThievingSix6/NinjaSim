@@ -14,6 +14,7 @@ local Menu = {}
 local PLAYER_COMMANDS = {
 	{ "Coins", "Give Coins", "Gold", "Coin" },
 	{ "Shards", "Give Shards", "Cyan", "Shard" },
+	{ "Seals", "Give Seals", "Red", "Oni" },
 	{ "Levels", "Add Levels", "Blue", "Star" },
 	{ "UnlockZones", "Unlock Areas", "Green", "Areas" },
 	{ "Heal", "Heal", "Green", "Heart" },
