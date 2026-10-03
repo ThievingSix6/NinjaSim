@@ -56,6 +56,9 @@ local function hurt(player: Player, amount: number, from: Vector3, knock: number
 	if services.CombatService:IsInvulnerable(player) then
 		return -- rolled through it
 	end
+	if services.CombatService:Guarded(player, humanoid, amount) then
+		return -- Phoenix Rebirth took the blow
+	end
 	humanoid:TakeDamage(amount)
 	Net.Event("PlayerHurt"):FireClient(player, amount, from, true)
 	if knock and knock > 0 then

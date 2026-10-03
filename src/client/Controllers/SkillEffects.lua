@@ -952,10 +952,15 @@ SkillEffects.Tools = {
 	controllers = function()
 		return controllers
 	end,
+	poses = function()
+		return POSES
+	end,
 }
 require(script.Parent:WaitForChild("ElementEffects")).Register(E, SkillEffects.Tools)
 -- Suit mastery ultimates (Config/Mastery) too (UltimateEffects).
 require(script.Parent:WaitForChild("UltimateEffects")).Register(E, SkillEffects.Tools)
+-- Every other suit's own ultimates, with their own poses (SuitUltimateEffects, UltimatePoses).
+require(script.Parent:WaitForChild("SuitUltimateEffects")).Register(E, SkillEffects.Tools)
 -- Charm spells (Config/Charms: the Hexfire Torch's Hexfire) too (CharmEffects).
 require(script.Parent:WaitForChild("CharmEffects")).Register(E, SkillEffects.Tools)
 

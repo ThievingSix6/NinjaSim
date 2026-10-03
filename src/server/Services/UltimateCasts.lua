@@ -7,6 +7,10 @@
 	returns an info table for the client looks (Controllers/UltimateEffects).
 	The Avatar keeps a per-player state: while awake, every sword swing throws a
 	wave (SkillService:AvatarSwing, called by CombatService) and hits heal.
+
+	These four are the Brown Ninja's. Every other suit has its own set (SuitUltimates),
+	added here through Register; their "every swing does X while active" buffs use
+	the same per-player state (Awaken), with their own swing function.
 ]]
 
 local UltimateCasts = {}
@@ -27,6 +31,7 @@ local function heal(player: Player, fraction: number)
 end
 
 local U = {}
+local swings: { [string]: (any) -> any } = {} -- Kind -> what an awakened swing does
 
 -- Lv 25: rush through everything, untouchable, and burst at the end.
 function U.Rush(ctx)
@@ -93,7 +98,22 @@ function UltimateCasts.Cast(ctx)
 	return if fn then fn(ctx) else nil
 end
 
--- The awake Avatar's def, or nil.
+-- Adds other suits' casts (Kind -> fn(ctx) -> info) and swing effects.
+function UltimateCasts.Register(casts: { [string]: any }, swingFns: { [string]: any }?)
+	for kind, fn in pairs(casts) do
+		U[kind] = fn
+	end
+	for kind, fn in pairs(swingFns or {}) do
+		swings[kind] = fn
+	end
+end
+
+-- Starts an "every swing does something" state for `duration` seconds.
+function UltimateCasts.Awaken(player: Player, def, duration: number)
+	avatars[player] = { Until = os.clock() + duration, Def = def }
+end
+
+-- The awake Avatar's (or other swing buff's) def, or nil.
 function UltimateCasts.Avatar(player: Player)
 	local a = avatars[player]
 	if a and os.clock() < a.Until then
@@ -104,8 +124,13 @@ function UltimateCasts.Avatar(player: Player)
 end
 
 -- A sword swing while awake: a wave down the swing's line; every hit heals. Returns info.
+-- Other suits' swing buffs go to their own swing function.
 function UltimateCasts.Wave(ctx)
 	local d = ctx.Def
+	if d.Kind ~= "Avatar" then
+		local fn = swings[d.Kind]
+		return if fn then fn(ctx) else {}
+	end
 	local origin, dir = ctx.Origin, ctx.Dir
 	local targets = K.Line(ctx.Player, origin, dir, d.WaveLength, d.WaveWidth, d.MaxTargets)
 	K.Later(0.12, function()

@@ -442,6 +442,19 @@ require(script.Parent.ElementCasts).Register(CAST, kit)
 -- Suit mastery ultimates (Config/Mastery) share the same helpers.
 local UltimateCasts = require(script.Parent.UltimateCasts)
 UltimateCasts.Init(kit)
+-- Every other suit's own ultimates (SuitUltimates) use the same kit and the elemental helpers.
+local SuitUltimates = require(script.Parent.SuitUltimates)
+SuitUltimates.Init(kit, require(script.Parent.ElementCasts).Tools, UltimateCasts.Awaken, function(ctx, info)
+	-- a mid-ultimate event (Phoenix Rebirth's revive): the caster and everyone near see it
+	local root = rootOf(ctx.Player)
+	local origin = if root then root.Position else ctx.Origin
+	local payload = { Player = ctx.Player, Skill = ctx.Def.Id, Level = 1, Origin = origin, Dir = ctx.Dir, Info = info, Proc = true }
+	Net.Event("SkillCast"):FireClient(ctx.Player, payload)
+	for _, other in ipairs(othersNear(ctx.Player, origin)) do
+		Net.Event("SkillCast"):FireClient(other, payload)
+	end
+end)
+UltimateCasts.Register(SuitUltimates.Casts, SuitUltimates.Swings)
 
 -- ===== requests =====
 local function notify(player: Player, text: string, color: Color3?, icon: string?)

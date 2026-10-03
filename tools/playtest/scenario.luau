@@ -740,6 +740,10 @@ return function(E)
 		if after <= before and afterLevel == 1 then
 			report("scenario", "a kill gave no mastery")
 		end
+		-- the Brown Ninja keeps the first ultimates (Rush, Lance, Cataclysm, Avatar); the
+		-- other suits' own sets are checked in "every suit's ultimates"
+		print("wear the brown suit:", DC:Request("SetSuit", "brown"))
+		task.wait(0.3)
 		-- locked ultimate, then every ultimate at Mastery 100
 		local locked = UC:Cast(1)
 		print("ultimate at mastery 1 refused:", not locked)
@@ -806,6 +810,121 @@ return function(E)
 			report("scenario", "an awakened swing threw no wave")
 		end
 		print("back to the rank's suit:", DC:Request("SetSuit", ""))
+	end)
+
+	step("every suit's ultimates", function()
+		local DC = E.cm("Controllers.DataController")
+		local UC = E.cm("Controllers.UltimateController")
+		local MS = E.sm("MasteryService")
+		local Mastery = E.shared("Config.Mastery")
+		local Tiers = E.shared("Config.Tiers")
+		local Net = E.shared("Net")
+		local DS = E.sm("DataService")
+		local data = DS:Get(player)
+		data.BestTier = #Tiers.List
+		DS:Changed(player, "BestTier")
+		local hitsBy, castsBy = {}, {}
+		local hitConn = Net.Event("SkillHits").OnClientEvent:Connect(function(payload)
+			if type(payload) == "table" and type(payload.Hits) == "table" then
+				hitsBy[payload.Skill] = (hitsBy[payload.Skill] or 0) + #payload.Hits
+			end
+		end)
+		local root = player.Character.HumanoidRootPart
+		local function nearEnemies()
+			for _, e in pairs(E.sm("EnemyService").All) do
+				if not e.Dead and not e.IsBoss and not e.Def.Static then
+					E.sm("ZoneService"):MarkTeleported(player)
+					local p = e.Root.Position
+					-- stand on +X looking -X (Lune's CFrame.lookAt mirrors Roblox's in Z, so
+					-- along X the aim assist and lock-on still face the right way)
+					root.CFrame = CFrame.new(p + Vector3.new(9, 0, 0)) * CFrame.Angles(0, math.pi / 2, 0)
+					return true
+				end
+			end
+			return false
+		end
+		local hum = player.Character:FindFirstChildOfClass("Humanoid")
+		local missed = {}
+		-- keep the crowd alive: hundreds of kills in a few seconds stall the emulator's
+		-- scheduler (it happens without ultimates too), and hits are what's checked here
+		local function sturdy()
+			for _, e in pairs(E.sm("EnemyService").All) do
+				if not e.Dead and not e.IsBoss then
+					e.MaxHealth = 1e12
+					e.Health = 1e12
+				end
+			end
+		end
+		-- SUITS=green,blue tests just those (one emulator run per suit keeps the
+		-- emulator's timer queue small; a long run of all 44 can stall it)
+		local only = {}
+		for id in string.gmatch(process.env.SUITS or "", "[^,]+") do
+			only[id] = true
+		end
+		local function wanted(tierId: string): boolean
+			return Mastery.Sets[tierId] ~= nil and (next(only) == nil or only[tierId] == true)
+		end
+		for _, tier in ipairs(Tiers.List) do
+			if wanted(tier.Id) then
+				print("wear", tier.Id, DC:Request("SetSuit", tier.Id))
+				task.wait(0.3)
+				MS:SetLevel(player, 100)
+				task.wait(0.3)
+				for slot = 1, 4 do
+					local def = UC:Get(slot)
+					hum.Health = hum.MaxHealth
+					sturdy()
+					if not nearEnemies() then
+						report("scenario", "no enemies left for " .. def.Name)
+						break
+					end
+					task.wait(0.1)
+					print("  casting " .. def.Name)
+					local ok = UC:Cast(slot)
+					castsBy[def.Id] = ok
+					task.wait(1.4)
+					-- Phoenix Rebirth: the death guard takes the first lethal blow
+					if def.Kind == "PhoenixRebirth" then
+						local CS = E.sm("CombatService")
+						hum.Health = 10
+						local saved = CS:Guarded(player, hum, 1e6)
+						print("  lethal blow guarded:", saved, "health", math.floor(hum.Health), "/", hum.MaxHealth, "| a second one not:", not CS:Guarded(player, hum, 1e6))
+						if not saved or hum.Health < hum.MaxHealth * 0.9 then
+							report("scenario", "Phoenix Rebirth did not save the player")
+						end
+					end
+					-- swing buffs: a swing while it lasts
+					if def.Kind == "StormOverload" or def.Kind == "BloodPact" then
+						nearEnemies()
+						freshStamina()
+						E.cm("Controllers.CombatController"):Swing()
+						task.wait(0.8)
+					end
+				end
+			end
+		end
+		task.wait(5) -- the long ones (sentinel, clones, sanctuary, shadow realm) finish
+		hitConn:Disconnect()
+		for _, tier in ipairs(Tiers.List) do
+			if wanted(tier.Id) then
+				local line = {}
+				for _, def in ipairs(Mastery.ForSuit(tier.Id)) do
+					table.insert(line, string.format("%s %s/%d", def.Name, if castsBy[def.Id] then "ok" else "NO", hitsBy[def.Id] or 0))
+					if not castsBy[def.Id] then
+						report("scenario", def.Name .. " did not cast")
+					elseif (hitsBy[def.Id] or 0) == 0 and def.Kind ~= "PhoenixRebirth" then
+						table.insert(missed, def.Name)
+					end
+				end
+				print(string.format("  %-9s %s", tier.Id, table.concat(line, " | ")))
+			end
+		end
+		print("hit nothing:", #missed, table.concat(missed, ", "))
+		if #missed > 0 then
+			report("scenario", #missed .. " ultimates hit nothing: " .. table.concat(missed, ", "))
+		end
+		print("back to the rank's suit:", DC:Request("SetSuit", ""))
+		hum.Health = hum.MaxHealth
 	end)
 
 	step("mutation machine", function()
@@ -1059,8 +1178,9 @@ return function(E)
 			if not e.Dead and not e.IsBoss and not e.Def.Static then
 				E.sm("ZoneService"):MarkTeleported(player)
 				local p = e.Root.Position
-				-- face it by yaw (Lune's CFrame.lookAt mirrors Roblox's): from +Z, looking -Z
-				root.CFrame = CFrame.new(p + Vector3.new(0, 0, 12)) * CFrame.Angles(0, 0, 0)
+				-- stand on +X looking -X: Lune's CFrame.lookAt mirrors Roblox's in Z, so the
+				-- aim assist only turns the right way along X
+				root.CFrame = CFrame.new(p + Vector3.new(12, 0, 0)) * CFrame.Angles(0, math.pi / 2, 0)
 				break
 			end
 		end

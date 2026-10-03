@@ -20,10 +20,27 @@ function Menu.Build(ctx)
 	local window, content, close = Kit.Window({
 		Name = "Suits", Title = "Ninja Suits", Icon = "Star", Accent = "Gold", Size = UDim2.fromOffset(1010, 560), Parent = ctx.Parent,
 	})
-	Kit.Label({
-		Text = "Wear any suit you have reached. The worn suit gains Mastery from kills: +0.5% damage per level, and ultimates at 25, 50, 75 and 100 (Z X C V).",
-		Font = Theme.FontBody, TextSize = 14, Color = Theme.SubText, Wrapped = true, Size = UDim2.new(1, 0, 0, 36), Stroke = false, Parent = content,
+	local INTRO = "Wear any suit you have reached. The worn suit gains Mastery from kills: +0.5% damage per level, and its own four ultimates at 25, 50, 75 and 100 (Z X C V). Point at one to read it."
+	local intro = Kit.Label({
+		Text = INTRO, Font = Theme.FontBody, TextSize = 14, Color = Theme.SubText, Wrapped = true, Size = UDim2.new(1, 0, 0, 36), Stroke = false, Parent = content,
 	})
+	-- pointing at (or tapping) an ultimate shows what it does in the line above the list
+	local function describe(chip: GuiObject, def)
+		local function show()
+			intro.Text = string.format("%s  (%s, Mastery %d):  %s", def.Name, def.Label, def.Level, def.Desc or "")
+			intro.TextColor3 = def.Color:Lerp(Theme.White, 0.4)
+		end
+		chip.MouseEnter:Connect(show)
+		chip.InputBegan:Connect(function(input)
+			if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
+				show()
+			end
+		end)
+		chip.MouseLeave:Connect(function()
+			intro.Text = INTRO
+			intro.TextColor3 = Theme.SubText
+		end)
+	end
 	local list = Common.Grid(content, { List = true, Gap = 8, Size = UDim2.new(1, 0, 1, -44), Position = UDim2.fromOffset(0, 44) })
 
 	local rows = {}
@@ -53,6 +70,7 @@ function Menu.Build(ctx)
 			local shade = Kit.New("Frame", { BackgroundColor3 = Theme.Ink, BackgroundTransparency = 0.45, Size = UDim2.fromScale(1, 1), ZIndex = 5, Parent = chip })
 			Kit.Corner(10).Parent = shade
 			chips[i] = { Shade = shade, Tag = tag, Def = def }
+			describe(chip, def)
 		end
 		local button = Kit.Button({
 			Text = "Wear", Color = "Green", TextSize = 20, Size = UDim2.fromOffset(110, 46),

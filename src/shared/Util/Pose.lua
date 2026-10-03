@@ -91,7 +91,7 @@ function Pose.Wrap(pose)
 		local a = pose[joint] or ZERO
 		out[joint] = { wrap(a[1]), wrap(a[2]), wrap(a[3]) }
 	end
-	out.RootPos = pose.RootPos
+	out.RootPos = pose.RootPos or ZERO
 	return out
 end
 

@@ -68,13 +68,14 @@ function UltimateController:OnCast(fn: (number) -> ())
 	table.insert(castListeners, fn)
 end
 
--- Rushes go where you move; the rest at the nearest enemy in reach, else where the camera looks.
+-- Dashes (def.Steer) go where you move; the rest at the nearest enemy in reach, else
+-- where the camera looks.
 local function aim(def, root: BasePart, humanoid: Humanoid): Vector3
 	local moving = flat(humanoid.MoveDirection)
-	if def.Kind == "Rush" and moving.Magnitude > 0.1 then
+	if def.Steer and moving.Magnitude > 0.1 then
 		return moving.Unit
 	end
-	local reach = def.Length or 40
+	local reach = def.Length or def.Range or def.Distance or 40
 	local best, bestDist = nil, reach
 	for _, model in ipairs(CollectionService:GetTagged("Enemy")) do
 		if model:IsA("Model") and not model:GetAttribute("Dead") and model.PrimaryPart then

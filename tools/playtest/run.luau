@@ -192,6 +192,10 @@ method("TweenService", "Create", function(_, obj, info, props)
 		end
 	end
 	local tween = { Completed = Signal.new("Tween.Completed"), PlaybackState = Enum.PlaybackState.Begin, Instance = obj }
+	if info.Time ~= info.Time then
+		report("Tween", "NaN tween time for " .. unwrap(obj):GetFullName() .. "\n" .. debug.traceback())
+		info.Time = 0
+	end
 	function tween.Play(self)
 		task.delay(math.min(info.Time or 0, 0.05), function()
 			for k, v in pairs(props) do
@@ -281,6 +285,10 @@ method("PhysicsService", "RegisterCollisionGroup", function() end)
 method("PhysicsService", "CollisionGroupSetCollidable", function() end)
 method("PhysicsService", "IsCollisionGroupRegistered", function() return false end)
 method("Debris", "AddItem", function(_, inst, t)
+	if t ~= nil and (type(t) ~= "number" or t ~= t) then
+		report("Debris", "bad lifetime " .. tostring(t) .. "\n" .. debug.traceback())
+		t = 0
+	end
 	task.delay(math.min(t or 10, 2), function()
 		pcall(function() inst:Destroy() end)
 	end)
@@ -462,7 +470,13 @@ local function makeEnv(isServer)
 	local wtask = {
 		spawn = function(fn, ...) if type(fn) == "thread" then return task.spawn(fn, ...) end return task.spawn(guard(fn, "spawn"), ...) end,
 		defer = function(fn, ...) if type(fn) == "thread" then return task.defer(fn, ...) end return task.defer(guard(fn, "defer"), ...) end,
-		delay = function(t, fn, ...) return task.delay(t, guard(fn, "delay"), ...) end,
+		delay = function(t, fn, ...)
+			if type(t) ~= "number" or t ~= t then
+				report("task.delay", "bad delay " .. tostring(t) .. "\n" .. debug.traceback())
+				t = 0
+			end
+			return task.delay(t, guard(fn, "delay"), ...)
+		end,
 		wait = function(t) return task.wait(t or 1 / 60) end,
 		cancel = task.cancel,
 		synchronize = function() end,

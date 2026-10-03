@@ -96,12 +96,24 @@ Fight enemies to earn XP and Coins. Level up to unlock ninja ranks from Brown Ni
     - Previews: `SCENARIO=petshots lune run run.luau` in `tools/playtest`, then `python3 tools/blender/pet_previews.py /tmp/claude-0/petshots/pets.json assets/previews/pets/mutations --ui /tmp/claude-0/petprev/ui`. Pass `UIPREVIEW_ASSETS=/tmp/claude-0/petprev/ui/assets.json` to `tools/uipreview/shoot.mjs` and the UI shots show the rendered pets.
 - **Mutation Machine** (`MutationService`, by the village spawn): reroll the mutation of a pet or a hat. A roll costs Coins (more for rarer items), a Lucky Roll 25 Spirit Shards and makes Rainbow, Giant, Celestial and Secret three times as likely. Every roll gives a mutation, sometimes a worse one (rerolling a Rainbow or better asks first). **Secret** (x50 pet stats, a black glitch with shifting neon seams, runes and a galaxy haze) only comes from the machine. Hats take mutations too: x1.1 (Big) up to x3 (Secret) on all their stats, with a name prefix and a recolour.
 - **Trading** (`TradeService`, Trade menu, `Y`): invite a player in the server, both put up to 9 pets, hats and charms on the table, both press Ready; any change un-readies both, and after a 3 s countdown the server checks everything again and swaps the items in one step, then saves both players.
-- **Suits and mastery** (Blox Fruits style; `Config/Mastery`, `MasteryService`, Suits menu `N`): wear any ninja suit you have reached (it only changes your look). The worn suit gains mastery from kills (bosses give much more) up to 100: +0.5% damage per level, and four ultimates in the suit's element, cast with `Z X C V` from the ultimate bar:
-  - Mastery 25, movement: an invulnerable 60 stud rush through everything, bursting at the end.
-  - Mastery 50, long range: a 140 stud beam that pierces everything on it five times.
-  - Mastery 75, area: three expanding shockwaves up to 46 studs.
-  - Mastery 100, awakening: 20 s of x1.75 damage and faster moves and swings; every swing throws a wave and hits heal you.
-  - Each suit's four have their own names (Brown's Landslide Rush to Void's Void Emperor) and hit harder on higher suits. Server: `UltimateCasts` via `SkillService:CastUltimate`; looks: `UltimateEffects`. Admin panel: **Set Mastery**.
+- **Suits and mastery** (Blox Fruits style; `Config/Mastery`, `MasteryService`, Suits menu `N`): wear any ninja suit you have reached (it only changes your look). The worn suit gains mastery from kills (bosses give much more) up to 100: +0.5% damage per level, and four ultimates of its own, cast with `Z X C V` from the ultimate bar: Mastery 25 a movement skill, 50 a long range one, 75 an area one, 100 a special. Every suit's four are different, each with its own mechanics, effects and animation (44 poses in `Controllers/UltimatePoses.lua`), and they hit harder on higher suits:
+
+  | Suit | Z (Mastery 25) | X (50) | C (75) | V (100) |
+  |---|---|---|---|---|
+  | Brown (Earth) | Landslide Rush: untouchable 60 stud rush, burst at the end | Tectonic Lance: 140 stud beam, 5 hits | Continental Quake: three shockwaves | Stone Titan: awaken for 20 s, swings throw waves and heal |
+  | Green (Wind) | Gale Zigzag: three zig-zag wind dashes | Vacuum Boomerang: a wind crescent that flies out 80 studs and back | Eye of the Typhoon: drags everything into a spinning wall, then blows it away | Sky Dancer: leap and hover, 10 homing wind blades |
+  | Blue (Ice) | Glacial Skate: skate a road of ice that freezes, then slows | Frost Lance Volley: five freezing lances in a fan | Permafrost Dome: freeze everything inside, then shatter it | Glacial Sentinel: an ice tower that shoots frost bolts for 12 s |
+  | Purple (Lightning) | Lightning Step: three blinks, a thunderclap at each | Railgun Arc: a railgun shot that chains through 12 enemies | Thunder Cage: eight pillars arc lightning across a ring | Storm Overload: 15 s of faster, harder swings that call down bolts |
+  | Red (Fire) | Comet Dive: leap and crash ahead, the crater burns | Dragon's Breath: a 110 degree sweeping torrent | Volcanic Eruption: twelve lava geysers launch enemies | Phoenix Rebirth: 20 s of regen; the first deadly blow revives you in an explosion |
+  | Black (Storm) | Thunderhead Surf: ride a cloud 70 studs, lightning below | Thunder Spear Barrage: 12 spears down a 100 stud line | Black Tempest: a hurricane bursts out, then collapses back in | Storm Clones: three clones throw chain lightning for 10 s |
+  | White (Light) | Radiant Ascension: rise and come down ahead as a pillar of light | Prism Beam: a beam that splits into three | Judgment Swords: a ring of falling swords, then judgment | Dawn Sanctuary: holy ground that heals you and burns enemies |
+  | Gold (Sun) | Sunflare Charge: charge in sunfire, throwing enemies aside | Sunspear Javelin: pins the first enemy, then detonates | Supernova: charge untouchable, then a 55 stud blast | Solar Crown: +30% damage and a small sun that scorches nearby enemies |
+  | Crimson (Blood) | Blood Rend: flash between up to six enemies, each cut heals | Hemorrhage Scythe: a scythe that spirals out to 50 studs | Blood Moon: everything under it bleeds and heals you | Blood Pact: pay 20% HP for +60% damage; swings throw healing crescents |
+  | Shadow (Darkness) | Shadow Swap: rise behind the farthest enemy and strike | Shadow Serpent: a snake that hunts down seven enemies | Nightfall: shadow hands grab everything, then spikes | Shadow Realm: 5 s untouchable and fast, then everything near is torn apart |
+  | Celestial (Cosmic) | Warp Gate: step through space 65 studs, both gates blast | Starlight Arrow: an arrow that bursts into 20 falling stars | Constellation Collapse: enemies become stars that fall | Zodiac Time Stop: freeze everything within 80 studs for 4 s, then all the damage lands |
+  | Void (Gravity) | Gravity Slingshot: fling yourself at the farthest enemy, dragging the rest along | Event Horizon: a beam that pulls enemies onto it, then crushes them | Gravity Crush: lift everything, crush it, slam it down | Black Sun: a black hole that drags in everything for 4 s, then collapses |
+
+  Server: Brown's in `UltimateCasts`, the rest in `SuitUltimates` (both via `SkillService:CastUltimate`); looks: `UltimateEffects` and `SuitUltimateEffects`. Dashes go where you are moving. Admin panel: **Set Mastery**.
 - **Hat loot (Diablo-style):** every kill has a 1% chance to drop a hat (bosses 25%, training dummies never), only for the players who earned the kill. It lands in a pillar of light coloured by rarity; walk into it (or it flies to you after 6 s) for a toast with its name.
   - 20 base hats (Hachimaki and Straw Kasa in the village up to the Shogun Helm and Void Crown in the Void Realm), each with fixed base stats and the areas it drops in (`Config/Hats.lua`).
   - Rarities: Common (no affixes), Magic (1-2), Rare (3-4), Legendary (4 + an on-hit skill proc), Mythic (5 + a proc, x1.6 rolls). Luck makes better rarities likelier; it never changes the 1% rate.
@@ -156,7 +168,7 @@ src/shared/               ReplicatedStorage.Shared
   Net.lua                 remotes
 src/server/               ServerScriptService.Server
   Main.server.lua         boots the world + services
-  Services/               Data, Stat, Zone, Character, Progression, Enemy, Boss, Combat, Skill, Mastery, Rebirth, Shop, Pet, Mutation, Trade, Charm, Inventory, Event, Gift, Leaderboard, Achievement, Request (+ ElementCasts, UltimateCasts)
+  Services/               Data, Stat, Zone, Character, Progression, Enemy, Boss, Combat, Skill, Mastery, Rebirth, Shop, Pet, Mutation, Trade, Charm, Inventory, Event, Gift, Leaderboard, Achievement, Request (+ ElementCasts, UltimateCasts, SuitUltimates)
   World/                  WorldBuilder, ZoneDecor, Props
 src/client/               StarterPlayerScripts.Client
   Main.client.lua         boots the controllers

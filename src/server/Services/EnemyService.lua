@@ -437,7 +437,8 @@ function EnemyService:EnemyAttack(enemy, player: Player)
 		end
 		if flatDistance(root.Position, enemy.Root.Position) <= enemy.Radius + 6.5 then
 			local humanoid = (player.Character :: Model):FindFirstChildOfClass("Humanoid")
-			if humanoid and not (player.Character :: Model):FindFirstChildOfClass("ForceField") and not services.CombatService:IsInvulnerable(player) then
+			if humanoid and not (player.Character :: Model):FindFirstChildOfClass("ForceField") and not services.CombatService:IsInvulnerable(player)
+				and not services.CombatService:Guarded(player, humanoid, enemy.Damage) then
 				humanoid:TakeDamage(enemy.Damage)
 				Net.Event("PlayerHurt"):FireClient(player, enemy.Damage, enemy.Root.Position)
 			end

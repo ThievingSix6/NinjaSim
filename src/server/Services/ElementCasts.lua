@@ -628,6 +628,12 @@ end
 ElementCasts.Casts = C
 
 -- kit: { Strike, Circle, Cone, Line, Later, Iframes, RootOf, ClearDistance, Services }
+-- The enemy-effect helpers, for the suit ultimates (SuitUltimates) too.
+ElementCasts.Tools = {
+	slow = slow, knockUp = knockUp, pull = pull, blind = blind, float = float, heal = heal,
+	points = points, ground = ground, movable = movable, living = living,
+}
+
 function ElementCasts.Register(cast: { [string]: any }, kit)
 	K = kit
 	for id, fn in pairs(C) do

@@ -198,6 +198,22 @@ end
 
 -- True while `player` is inside a dodge's i-frames: enemy and boss hits miss them.
 -- A miss tells the client so it can show "DODGED".
+-- Death guards (Phoenix Rebirth): fn(player, humanoid) runs instead of the first blow
+-- that would kill; it returns true when it saved them. Enemy and boss hits ask Guarded.
+local deathGuards: { [Player]: (Player, Humanoid) -> boolean } = {}
+function CombatService:SetDeathGuard(player: Player, fn: ((Player, Humanoid) -> boolean)?)
+	deathGuards[player] = fn
+end
+
+function CombatService:Guarded(player: Player, humanoid: Humanoid, amount: number): boolean
+	local fn = deathGuards[player]
+	if fn and humanoid.Health - amount <= 0 then
+		deathGuards[player] = nil
+		return fn(player, humanoid) == true
+	end
+	return false
+end
+
 function CombatService:IsInvulnerable(player: Player): boolean
 	local s = state[player]
 	if not s then
@@ -243,6 +259,7 @@ function CombatService:Start()
 	end
 	Players.PlayerAdded:Connect(hook)
 	Players.PlayerRemoving:Connect(function(player)
+		deathGuards[player] = nil
 		state[player] = nil
 	end)
 end
