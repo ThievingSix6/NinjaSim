@@ -34,6 +34,8 @@ return {
 
 	Charms = {}, -- [uid] = { Z = size, R = rarity, L = itemLevel, A = { { K, V } }, S = { K = skill | "All", N }?, U = unique?, X = col?, Y = row? } (Config/Charms); X/Y = in the grid
 	CharmSerial = 0,
+	Hires = {}, -- [hireId] = true: hired ninjas (Config/Hires, CompanionService); charms with G = hireId sit in their grids
+	ActiveHire = "", -- the one fighting beside you ("" = none)
 
 	Upgrades = {
 		XP = 0, Coins = 0, Damage = 0, Speed = 0, AttackSpeed = 0,

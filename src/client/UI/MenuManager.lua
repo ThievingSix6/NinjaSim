@@ -17,7 +17,7 @@ local AdminConfig = require(game:GetService("ReplicatedStorage").Shared.Config.A
 
 local MenuManager = {}
 
-local MENUS = { "Shop", "Pets", "Inventory", "Armory", "Rebirth", "Upgrades", "Areas", "Codes", "Gifts", "Trophies", "Settings", "Egg", "Admin", "Skills", "Hats", "Suits", "Mutate", "Trade", "Temple" }
+local MENUS = { "Shop", "Pets", "Inventory", "Armory", "Rebirth", "Upgrades", "Areas", "Codes", "Gifts", "Trophies", "Settings", "Egg", "Admin", "Skills", "Hats", "Suits", "Mutate", "Trade", "Temple", "Hire" }
 
 local controllers, Kit
 local root: Frame
@@ -171,6 +171,7 @@ function MenuManager:Start(c)
 			[Enum.KeyCode.H] = "Hats",
 			[Enum.KeyCode.N] = "Suits",
 			[Enum.KeyCode.Y] = "Trade",
+			[Enum.KeyCode.J] = "Hire",
 		}
 		if input.KeyCode == AdminConfig.ToggleKey then
 			shortcuts[input.KeyCode] = "Admin"

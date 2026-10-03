@@ -282,7 +282,7 @@ local function execute(session: Session): (boolean, string?)
 		end
 		for _, charm in ipairs(moving[giver].Charm) do
 			receiver.CharmSerial = (tonumber(receiver.CharmSerial) or 0) + 1
-			charm.Lock, charm.X, charm.Y = nil, nil, nil -- arrives in the stash
+			charm.Lock, charm.X, charm.Y, charm.G = nil, nil, nil, nil -- arrives in the stash
 			receiver.Charms[tostring(receiver.CharmSerial)] = charm
 		end
 	end

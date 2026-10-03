@@ -45,7 +45,7 @@ local GRID_BUTTONS = {
 	{ Name = "Trade", Icon = "Friends", Color = "Sky" },
 	{ Name = "Rebirth", Icon = "Rebirth", Color = "Purple" },
 	{ Name = "Trophies", Icon = "Trophy", Color = "Gold" },
-	{ Name = "Codes", Icon = "Codes", Color = "Pink" },
+	{ Name = "Hire", Icon = "Friends", Color = "Green" },
 	{ Name = "Settings", Icon = "Settings", Color = "Grey" },
 }
 local BOOST_ICONS = { XP2 = "Book", Coins2 = "Coin", Damage = "Flame", Luck = "Clover", Haste = "Bolt" }

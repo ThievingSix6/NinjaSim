@@ -711,7 +711,7 @@ local function stepEnemies(dt: number)
 	if now >= nextRetry and next(waiting) then
 		nextRetry = now + 0.25
 		for model in pairs(waiting) do
-			if model.Parent and CollectionService:HasTag(model, "Enemy") then
+			if model.Parent and (CollectionService:HasTag(model, "Enemy") or CollectionService:HasTag(model, "Companion")) then
 				registerEnemy(model)
 			else
 				waiting[model] = nil
@@ -815,10 +815,13 @@ function AnimationController:Start()
 		stepSwings(dt)
 		stepEnemies(dt)
 	end)
-	CollectionService:GetInstanceAddedSignal("Enemy"):Connect(registerEnemy)
-	CollectionService:GetInstanceRemovedSignal("Enemy"):Connect(unregisterEnemy)
-	for _, model in ipairs(CollectionService:GetTagged("Enemy")) do
-		registerEnemy(model)
+	-- hired ninjas (CompanionService) move and swing like enemies
+	for _, tag in ipairs({ "Enemy", "Companion" }) do
+		CollectionService:GetInstanceAddedSignal(tag):Connect(registerEnemy)
+		CollectionService:GetInstanceRemovedSignal(tag):Connect(unregisterEnemy)
+		for _, model in ipairs(CollectionService:GetTagged(tag)) do
+			registerEnemy(model)
+		end
 	end
 	-- models streamed out/destroyed without tag removal
 	task.spawn(function()

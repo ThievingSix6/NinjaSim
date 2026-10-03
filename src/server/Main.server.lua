@@ -55,6 +55,7 @@ local ORDER = {
 	"DuelService",
 	"PartyService",
 	"TokenService",
+	"CompanionService",
 	"TempleService",
 	"InventoryService",
 	"EventService",

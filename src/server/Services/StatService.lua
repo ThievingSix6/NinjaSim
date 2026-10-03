@@ -19,6 +19,7 @@ local STAT_KEYS = {
 	SkillBuff = true, -- not a save key: SetModifier marks it to push buffed stats
 	Mastery = true, Suit = true, -- the worn suit's mastery bonus (Config/Mastery)
 	Charms = true, -- the charm grid (CharmService)
+	ActiveHire = true, Hires = true, -- the fighting hire's charms share stats with you (Config/Hires)
 }
 
 local services

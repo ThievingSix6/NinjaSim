@@ -40,6 +40,7 @@ local ORDER = {
 	{ "DuelController", Controllers },
 	{ "PartyController", Controllers },
 	{ "TokenController", Controllers },
+	{ "CompanionController", Controllers },
 	{ "TempleController", Controllers },
 	{ "MovementController", Controllers },
 	{ "NunchakuController", Controllers },

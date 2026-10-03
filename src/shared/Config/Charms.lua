@@ -108,6 +108,9 @@ function Charms.Valid(charm: any): boolean
 	if charm.U ~= nil and not Charms.Uniques[charm.U] then
 		return false
 	end
+	if charm.G ~= nil and type(charm.G) ~= "string" then
+		return false
+	end
 	return true
 end
 
@@ -260,14 +263,20 @@ function Charms.Cells(charm, x: number, y: number): { number }?
 	return cells
 end
 
--- Which charm uid covers each cell: { [cellIndex] = uid }. Skips placements that are
--- off the grid or overlap one already counted (old or hand-edited saves).
-function Charms.Occupancy(data, ignoreUid: string?): { [number]: string }
+-- Grids: your own (grid nil) and one per hired ninja (grid = the hire's id, Config/Hires).
+-- A charm's G says whose grid it sits in (nil = yours); X, Y where in it.
+local function inGrid(charm, grid: string?): boolean
+	return (charm.G or "") == (grid or "")
+end
+
+-- Which charm uid covers each cell of a grid: { [cellIndex] = uid }. Skips placements
+-- that are off the grid or overlap one already counted (old or hand-edited saves).
+function Charms.Occupancy(data, ignoreUid: string?, grid: string?): { [number]: string }
 	local taken = {}
 	local charms = type(data.Charms) == "table" and data.Charms or {}
 	local uids = {}
 	for uid, charm in pairs(charms) do
-		if uid ~= ignoreUid and Charms.Valid(charm) and charm.X and charm.Y then
+		if uid ~= ignoreUid and Charms.Valid(charm) and charm.X and charm.Y and inGrid(charm, grid) then
 			table.insert(uids, uid)
 		end
 	end
@@ -290,14 +299,14 @@ function Charms.Occupancy(data, ignoreUid: string?): { [number]: string }
 	return taken
 end
 
--- Whether `charm` (uid) fits at (x, y), ignoring its own current spot.
-function Charms.Fits(data, uid: string, x: number, y: number): boolean
+-- Whether `charm` (uid) fits at (x, y) of a grid, ignoring its own current spot.
+function Charms.Fits(data, uid: string, x: number, y: number, grid: string?): boolean
 	local charm = data.Charms and data.Charms[uid]
 	local cells = charm and Charms.Cells(charm, x, y)
 	if not cells then
 		return false
 	end
-	local taken = Charms.Occupancy(data, uid)
+	local taken = Charms.Occupancy(data, uid, grid)
 	for _, c in ipairs(cells) do
 		if taken[c] then
 			return false
@@ -307,10 +316,10 @@ function Charms.Fits(data, uid: string, x: number, y: number): boolean
 end
 
 -- The first free spot for a charm (scanning columns left to right), or nil.
-function Charms.FreeSpot(data, uid: string): (number?, number?)
+function Charms.FreeSpot(data, uid: string, grid: string?): (number?, number?)
 	for x = 1, Charms.Cols do
 		for y = 1, Charms.Rows do
-			if Charms.Fits(data, uid, x, y) then
+			if Charms.Fits(data, uid, x, y, grid) then
 				return x, y
 			end
 		end
@@ -318,21 +327,21 @@ function Charms.FreeSpot(data, uid: string): (number?, number?)
 	return nil, nil
 end
 
--- The uids that are really in the grid (valid spot, no overlap), as a set.
-function Charms.Active(data): { [string]: boolean }
+-- The uids that are really in a grid (valid spot, no overlap), as a set.
+function Charms.Active(data, grid: string?): { [string]: boolean }
 	local out = {}
-	for _, uid in pairs(Charms.Occupancy(data)) do
+	for _, uid in pairs(Charms.Occupancy(data, nil, grid)) do
 		out[uid] = true
 	end
 	return out
 end
 
--- Everything the grid adds up to: { [statKey] = value, Skills = { [id] = n }, AllSkills, Hexfire }.
-function Charms.Bonus(data)
+-- Everything a grid adds up to: { [statKey] = value, Skills = { [id] = n }, AllSkills, Hexfire }.
+function Charms.Bonus(data, grid: string?)
 	local out: any = { Skills = {}, AllSkills = 0, Hexfire = 0 }
 	local torch = false
 	local uids = {}
-	for uid in pairs(Charms.Active(data)) do
+	for uid in pairs(Charms.Active(data, grid)) do
 		table.insert(uids, uid)
 	end
 	table.sort(uids, function(a, b)
@@ -371,9 +380,33 @@ function Charms.Bonus(data)
 	return out
 end
 
+-- Share of the fighting hire's charm stats that you get too (not skills or the torch).
+Charms.HireShare = 0.5
+Charms.SharedStats = { "Damage", "Crit", "Health", "Speed", "Haste", "XP", "Coins", "Luck", "Regen", "RegenStart", "LifeSteal" }
+
+-- Your grid plus HireShare of the active hire's grid (data.ActiveHire), capped as usual.
+function Charms.PlayerBonus(data)
+	local b = Charms.Bonus(data)
+	local hire = type(data.ActiveHire) == "string" and data.ActiveHire ~= "" and data.ActiveHire or nil
+	if hire and type(data.Hires) == "table" and data.Hires[hire] then
+		local h = Charms.Bonus(data, hire)
+		for _, key in ipairs(Charms.SharedStats) do
+			if h[key] then
+				b[key] = (b[key] or 0) + h[key] * Charms.HireShare
+			end
+		end
+		for key, cap in pairs(Charms.Caps) do
+			if b[key] then
+				b[key] = math.min(cap, b[key])
+			end
+		end
+	end
+	return b
+end
+
 -- Folds the charm grid into the derived stats (called from Stats.Compute, after hats).
 function Charms.ApplyToStats(stats, data, Balance)
-	local b = Charms.Bonus(data)
+	local b = Charms.PlayerBonus(data)
 	stats.Damage = math.floor(stats.Damage * (1 + (b.Damage or 0)))
 	stats.CritChance += b.Crit or 0
 	stats.MaxHealth = math.floor(stats.MaxHealth * (1 + (b.Health or 0)))

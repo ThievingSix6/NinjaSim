@@ -11,6 +11,11 @@
 	fit). Below it, the stash: charms you own that sit outside the grid.
 
 	Right, the picked charm's details, with To Stash / Place, Lock and Salvage.
+
+	Hired ninjas (Config/Hires) each have their own paper doll and charm grid: the
+	arrows by the doll's title switch between you and them. Their charms power them,
+	and half of the stats go to you while that ninja is the one fighting.
+	Open with a hire's id (MenuManager:Open("Inventory", id)) to start on their doll.
 ]]
 
 local Players = game:GetService("Players")
@@ -26,6 +31,9 @@ local Mastery = require(Shared.Config.Mastery)
 local Mutations = require(Shared.Config.Mutations)
 local HatBuilder = require(Shared.Visuals.HatBuilder)
 local CharmBuilder = require(Shared.Visuals.CharmBuilder)
+local EnemyBuilder = require(Shared.Visuals.EnemyBuilder)
+local Hires = require(Shared.Config.Hires)
+local Format = require(Shared.Util.Format)
 
 local Menu = {}
 
@@ -44,6 +52,7 @@ function Menu.Build(ctx)
 	})
 
 	local selected: string? = nil
+	local owner: string? = nil -- whose doll and grid: nil = yours, else a hire id
 	local hoverCell: Vector2? = nil
 	local refresh, paintHover
 
@@ -65,7 +74,37 @@ function Menu.Build(ctx)
 	-- ===== left: the paper doll =====
 	local doll = Kit.Panel({ Size = UDim2.new(0, 290, 1, 0), Color = Theme.Panel, Radius = 14, Parent = content })
 	Kit.Paint(doll, { rgb(46, 40, 58), rgb(22, 18, 30) })
-	Kit.Label({ Text = "Equipment", TextSize = 18, XAlign = Enum.TextXAlignment.Center, Size = UDim2.new(1, 0, 0, 26), Position = UDim2.fromOffset(0, 6), StrokeThickness = 2, Parent = doll })
+	local dollTitle = Kit.Label({ Text = "Equipment", TextSize = 18, XAlign = Enum.TextXAlignment.Center, Size = UDim2.new(1, -70, 0, 26), Position = UDim2.fromOffset(35, 6), StrokeThickness = 2, Scaled = true, MaxTextSize = 18, Parent = doll })
+	-- you and your hired ninjas, in order
+	local function owners(): { string | false }
+		local data = DataController:Get()
+		local list: { string | false } = { false }
+		for _, def in ipairs(Hires.List) do
+			if data and type(data.Hires) == "table" and data.Hires[def.Id] then
+				table.insert(list, def.Id)
+			end
+		end
+		return list
+	end
+	local showFigure
+	local function cycle(step: number)
+		local list = owners()
+		local index = table.find(list, owner or false) or 1
+		local nextOwner = list[((index - 1 + step) % #list) + 1]
+		owner = if nextOwner then nextOwner :: string else nil
+		selected = nil
+		C.SoundController:Play("Click")
+		showFigure()
+		refresh()
+	end
+	local prevOwner = Kit.Button({ Text = "<", Color = "Dark", TextSize = 16, Size = UDim2.fromOffset(28, 26), Position = UDim2.fromOffset(6, 6), ZIndex = 4, Parent = doll,
+		OnClick = function()
+			cycle(-1)
+		end })
+	local nextOwnerButton = Kit.Button({ Text = ">", Color = "Dark", TextSize = 16, Size = UDim2.new(0, 28, 0, 26), Position = UDim2.new(1, -34, 0, 6), ZIndex = 4, Parent = doll,
+		OnClick = function()
+			cycle(1)
+		end })
 	local figure = Kit.New("Frame", { BackgroundTransparency = 1, Size = UDim2.fromOffset(150, 240), Position = UDim2.new(0.5, 0, 0, 40), AnchorPoint = Vector2.new(0.5, 0), Parent = doll })
 
 	local slots = {}
@@ -92,7 +131,9 @@ function Menu.Build(ctx)
 	slot("Body", "Body", Vector2.new(66, 132), UDim2.new(1, -78, 0, 96), "Suits")
 	local petRow = Kit.New("Frame", { BackgroundTransparency = 1, Size = UDim2.new(1, -24, 0, 64), Position = UDim2.fromOffset(12, 290), Parent = doll })
 	Kit.List(Enum.FillDirection.Horizontal, 6, Enum.HorizontalAlignment.Center).Parent = petRow
-	Kit.Label({ Text = "From your charms", TextSize = 16, Color = Theme.Gold, Size = UDim2.new(1, -24, 0, 20), Position = UDim2.fromOffset(12, 362), StrokeThickness = 2, Parent = doll })
+	-- a hired ninja's fighting stats, where your pets go on your doll
+	local hireInfo = Kit.Label({ Text = "", Font = Theme.FontBody, TextSize = 13, Color = Theme.Text, Wrapped = true, XAlign = Enum.TextXAlignment.Center, Size = UDim2.new(1, -24, 0, 64), Position = UDim2.fromOffset(12, 290), Visible = false, StrokeThickness = 1.5, Parent = doll })
+	local summaryTitle = Kit.Label({ Text = "From your charms", TextSize = 16, Color = Theme.Gold, Size = UDim2.new(1, -24, 0, 20), Position = UDim2.fromOffset(12, 362), StrokeThickness = 2, Scaled = true, MaxTextSize = 16, Parent = doll })
 	local summary = Kit.New("ScrollingFrame", {
 		BackgroundTransparency = 1, BorderSizePixel = 0, Size = UDim2.new(1, -24, 1, -392), Position = UDim2.fromOffset(12, 386),
 		ScrollBarThickness = 4, CanvasSize = UDim2.new(), AutomaticCanvasSize = Enum.AutomaticSize.Y, Parent = doll,
@@ -107,8 +148,17 @@ function Menu.Build(ctx)
 		end
 	end
 
-	local function showFigure()
+	function showFigure()
 		clearViews(figure)
+		local hire = Hires.Get(owner)
+		if hire then
+			local ok, model = pcall(EnemyBuilder.Build, Hires.RigDef(hire), 1)
+			if ok and model then
+				model:SetAttribute("ViewRotation", CFrame.Angles(0, math.pi, 0))
+				Kit.Viewport(figure, model, { Size = UDim2.fromScale(1, 1), Zoom = 1.05, ZIndex = 2 })
+			end
+			return
+		end
 		local character = Players.LocalPlayer.Character
 		local clone
 		if character then
@@ -136,6 +186,24 @@ function Menu.Build(ctx)
 	end
 
 	local function showSlots(data)
+		local hire = Hires.Get(owner)
+		for _, s in pairs(slots) do
+			s.Button.Visible = hire == nil
+		end
+		petRow.Visible = hire == nil
+		hireInfo.Visible = hire ~= nil
+		dollTitle.Text = if hire then hire.Name else "Equipment"
+		local many = #owners() > 1
+		prevOwner.Visible, nextOwnerButton.Visible = many, many
+		if hire then
+			local stats = DataController:GetStats()
+			local hs = stats and Hires.Stats(hire, stats, Charms.Bonus(data, hire.Id))
+			local fighting = data.ActiveHire == hire.Id
+			hireInfo.Text = if hs
+				then string.format("%s  ·  %s Dmg  ·  %s HP  ·  %d%% Crit\n%s: %s\n%s", hire.Role, Format.Abbrev(hs.Damage), Format.Abbrev(hs.MaxHealth), math.floor(hs.Crit * 100), hire.Skill.Name, hire.Skill.Text, if fighting then "Fighting beside you" else "Resting (pick them in the Hire menu)")
+				else hire.Role
+			return
+		end
 		-- head: the worn hat
 		local head = slots.Head
 		clearViews(head.Button)
@@ -204,8 +272,9 @@ function Menu.Build(ctx)
 				c:Destroy()
 			end
 		end
-		local b = Charms.Bonus(data)
+		local b = Charms.Bonus(data, owner)
 		local lines = {}
+		summaryTitle.Text = if owner then "From its charms (half to you)" else "From your charms"
 		if b.AllSkills > 0 then
 			table.insert(lines, { string.format("+%d to All Skills", b.AllSkills), Theme.Gold })
 		end
@@ -226,8 +295,21 @@ function Menu.Build(ctx)
 		if b.Hexfire > 0 then
 			table.insert(lines, { string.format("%d%% chance on attack to cast Hexfire", b.Hexfire * 100), Charms.Hexfire.Color })
 		end
+		if owner then
+			-- skills and the torch only work for you
+			for i = #lines, 1, -1 do
+				if lines[i][2] == Theme.Gold then
+					table.remove(lines, i)
+				end
+			end
+		else
+			local hire = Hires.Get(data.ActiveHire)
+			if hire and data.Hires and data.Hires[hire.Id] and next(Charms.Active(data, hire.Id)) then
+				table.insert(lines, { string.format("+ half the stats of %s's charms", hire.Name), Theme.Green })
+			end
+		end
 		if #lines == 0 then
-			table.insert(lines, { "Put charms in the grid. Enemies drop them (very rarely).", Theme.Muted })
+			table.insert(lines, { if owner then "Charms here power this ninja, and half their stats go to you while they fight." else "Put charms in the grid. Enemies drop them (very rarely).", Theme.Muted })
 		end
 		for i, line in ipairs(lines) do
 			tall({
@@ -283,7 +365,7 @@ function Menu.Build(ctx)
 			cell.MouseButton1Click:Connect(function()
 				if selected then
 					local uid = selected
-					if act("PlaceCharm", uid, x, y) then
+					if act("PlaceCharm", uid, x, y, owner) then
 						C.SoundController:Play("Equip")
 					end
 				end
@@ -301,7 +383,7 @@ function Menu.Build(ctx)
 			return
 		end
 		local charm = data.Charms[selected]
-		local fits = Charms.Fits(data, selected, hoverCell.X, hoverCell.Y)
+		local fits = Charms.Fits(data, selected, hoverCell.X, hoverCell.Y, owner)
 		local size = Charms.Size(charm)
 		for dx = 0, size.W - 1 do
 			for dy = 0, size.H - 1 do
@@ -380,12 +462,12 @@ function Menu.Build(ctx)
 			if charm.X then
 				act("StashCharm", selected)
 			else
-				local x, y = Charms.FreeSpot(data, selected :: string)
+				local x, y = Charms.FreeSpot(data, selected :: string, owner)
 				if not x then
 					C.NotificationController:Toast("No room in the grid for that charm", Theme.Red, "Lock")
 					return
 				end
-				if act("PlaceCharm", selected, x, y) then
+				if act("PlaceCharm", selected, x, y, owner) then
 					C.SoundController:Play("Equip")
 				end
 			end
@@ -472,8 +554,9 @@ function Menu.Build(ctx)
 				Size = UDim2.new(1, -4, 0, 0), LayoutOrder = 99, Stroke = false, Parent = lineBox,
 			})
 		end
-		local active = Charms.Active(data)[selected :: string] == true
-		stateLabel.Text = if active then "In the grid: active" else "In the stash: not active"
+		local where = Hires.Get(charm.G)
+		local active = Charms.Active(data, charm.G)[selected :: string] == true
+		stateLabel.Text = if not active then "In the stash: not active" elseif where then "In " .. where.Name .. "'s grid" else "In your grid: active"
 		stateLabel.TextColor3 = if active then Theme.Green else Theme.Muted
 		Kit.Api(moveButton).SetText(if charm.X then "To Stash" else "Place in Grid")
 		Kit.Api(moveButton).SetColor(if charm.X then "Blue" else "Green")
@@ -491,12 +574,22 @@ function Menu.Build(ctx)
 		for _, c in ipairs(tiles:GetChildren()) do
 			c:Destroy()
 		end
-		local active = Charms.Active(data)
+		if owner and not (type(data.Hires) == "table" and data.Hires[owner]) then
+			owner = nil
+		end
+		local active = Charms.Active(data, owner)
 		local activeCount = 0
 		for uid in pairs(active) do
 			activeCount += 1
 			local charm = data.Charms[uid]
 			charmTile(tiles, uid, charm, tileSize(charm), cellPos(charm.X, charm.Y), 6)
+		end
+		-- charms in anyone's grid stay out of the stash
+		local inUse = table.clone(active)
+		for _, id in ipairs(owners()) do
+			for uid in pairs(Charms.Active(data, if id then id :: string else nil)) do
+				inUse[uid] = true
+			end
 		end
 		-- stash
 		Common.ClearGrid(stash)
@@ -504,7 +597,7 @@ function Menu.Build(ctx)
 		local total = 0
 		for uid, charm in pairs(data.Charms) do
 			total += 1
-			if Charms.Valid(charm) and not active[uid] then
+			if Charms.Valid(charm) and not inUse[uid] then
 				table.insert(list, { Uid = uid, Order = -Charms.Rarity(charm.R).Index * 100 - (if charm.S then 50 else 0) - Charms.Size(charm).Index })
 			end
 		end
@@ -527,7 +620,7 @@ function Menu.Build(ctx)
 		paintHover()
 	end
 
-	for _, key in ipairs({ "Charms", "EquippedHat", "Hats", "EquippedKatana", "EquippedPets", "Suit" }) do
+	for _, key in ipairs({ "Charms", "EquippedHat", "Hats", "EquippedKatana", "EquippedPets", "Suit", "Hires", "ActiveHire" }) do
 		DataController:OnChange(key, function()
 			if window.Visible then
 				refresh()
@@ -537,7 +630,10 @@ function Menu.Build(ctx)
 
 	return {
 		Window = window, Close = close,
-		OnOpen = function()
+		OnOpen = function(arg)
+			local data = DataController:Get()
+			owner = if type(arg) == "string" and data and type(data.Hires) == "table" and data.Hires[arg] then arg else nil
+			selected = nil
 			showFigure()
 			refresh()
 		end,

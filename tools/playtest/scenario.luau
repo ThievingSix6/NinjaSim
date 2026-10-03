@@ -1839,6 +1839,99 @@ return function(E)
 		E.removeServerPlayer(friend)
 	end)
 
+	step("hired ninjas", function()
+		local DC = E.cm("Controllers.DataController")
+		local DS = E.sm("DataService")
+		local CS = E.sm("CompanionService")
+		local SS = E.sm("StatService")
+		local ES = E.sm("EnemyService")
+		local Charms = E.shared("Config.Charms")
+		local data = DS:Get(player)
+		local root = player.Character.HumanoidRootPart
+		print("too poor / low:", DC:Request("HireNinja", "samurai"))
+		DS:Set(player, "Coins", data.Coins + 1e9)
+		if data.Level < 10 then
+			DS:Set(player, "Level", 10)
+		end
+		print("hire genin:", DC:Request("HireNinja", "genin"))
+		task.wait(0.5)
+		local c = CS:Get(player)
+		print("companion out:", c ~= nil, "| active", data.ActiveHire, "| hp", c and c.MaxHealth, "dmg", c and c.Stats.Damage)
+		if not c or data.ActiveHire ~= "genin" then
+			report("scenario", "hiring a ninja didn't bring it out")
+			return
+		end
+		-- it follows
+		E.sm("ZoneService"):MarkTeleported(player)
+		root.CFrame = root.CFrame + Vector3.new(0, 0, 30)
+		task.wait(3)
+		print("follow distance after walking off:", math.floor((c.Root.Position - root.Position).Magnitude))
+		-- it fights: stand next to an enemy and let the ninja work
+		local enemy
+		for _, e in pairs(ES.All) do
+			if not e.Dead and not e.IsBoss and not e.Def.Static then
+				enemy = e
+				break
+			end
+		end
+		enemy.MaxHealth, enemy.Health = 1e12, 1e12
+		enemy.Damage = 0
+		E.sm("ZoneService"):MarkTeleported(player)
+		root.CFrame = CFrame.new(enemy.Root.Position + Vector3.new(10, 0, 0))
+		c.Model:PivotTo(CFrame.new(enemy.Root.Position + Vector3.new(3.5, 0, 1)))
+		c.SkillReadyAt = os.clock() + 100
+		local hp0 = enemy.Health
+		task.wait(5)
+		print("ninja dealt", math.floor(hp0 - enemy.Health), "to", enemy.Def.Name, "| player contrib", enemy.Contrib[player] and math.floor(enemy.Contrib[player]))
+		if enemy.Health >= hp0 then
+			report("scenario", "the hired ninja never hit the enemy next to it")
+		end
+		-- its skill
+		c.SkillReadyAt = 0
+		hp0 = enemy.Health
+		task.wait(1)
+		print("after its skill: dealt", math.floor(hp0 - enemy.Health))
+		-- enemies can knock it out; it gets back up
+		CS:Hurt(c, c.MaxHealth + 1)
+		print("knocked out:", c.DownUntil > 0)
+		c.DownUntil = os.clock() + 0.3
+		task.wait(1)
+		print("back up:", c.DownUntil == 0, "hp", math.floor(c.Health), "/", c.MaxHealth)
+		if c.DownUntil ~= 0 or c.Health < c.MaxHealth then
+			report("scenario", "a knocked-out ninja didn't get back up")
+		end
+		-- its own charm grid: a Damage charm there powers it, and half goes to you
+		local CharmS = E.sm("CharmService")
+		local uid = CharmS:Add(player, Charms.Roll(40, 0, nil, "Grand", "Legendary"))
+		local charm = data.Charms[uid]
+		CharmS:Stash(player, uid)
+		task.wait(0.3)
+		local myDmg0, itsDmg0 = SS:Get(player).Damage, c.Stats.Damage
+		local x, y = Charms.FreeSpot(data, uid, "genin")
+		print("place in the genin's grid:", DC:Request("PlaceCharm", uid, x, y, "genin"), "| G", charm.G)
+		task.wait(0.5)
+		local bonus = Charms.Bonus(data, "genin")
+		local keys = {}
+		for k, v in pairs(bonus) do
+			if type(v) == "number" and v ~= 0 then
+				table.insert(keys, k .. "=" .. string.format("%.2f", v))
+			end
+		end
+		print("charm bonus to the ninja:", table.concat(keys, " "), string.format("| ninja dmg %d -> %d hp -> %d | your dmg %d -> %d", itsDmg0, c.Stats.Damage, c.MaxHealth, myDmg0, SS:Get(player).Damage))
+		if charm.G ~= "genin" then
+			report("scenario", "a charm didn't go into the hire's grid")
+		end
+		print("place in a grid you don't own:", DC:Request("PlaceCharm", uid, 1, 1, "samurai"))
+		-- dismiss
+		print("dismiss:", DC:Request("SetActiveHire", ""))
+		task.wait(0.3)
+		print("companion gone:", CS:Get(player) == nil)
+		if CS:Get(player) then
+			report("scenario", "dismissing the hire didn't send it home")
+		end
+		DC:Request("StashCharm", uid)
+	end)
+
 	step("ragdolls", function()
 		local AC = E.cm("Controllers.AnimationController")
 		print("ragdolls made so far", AC.RagdollCount)

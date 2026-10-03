@@ -156,8 +156,15 @@ function handlers.SalvageHatsUpTo(player, rarity)
 	return services.LootService:SalvageUpTo(player, str(rarity))
 end
 -- charms (CharmService)
-function handlers.PlaceCharm(player, uid, x, y)
-	return services.CharmService:Place(player, str(uid), if type(x) == "number" then x else nil, if type(y) == "number" then y else nil)
+function handlers.PlaceCharm(player, uid, x, y, grid)
+	return services.CharmService:Place(player, str(uid), if type(x) == "number" then x else nil, if type(y) == "number" then y else nil, if type(grid) == "string" then grid else nil)
+end
+-- hired ninjas (CompanionService)
+function handlers.HireNinja(player, id)
+	return services.CompanionService:Hire(player, str(id))
+end
+function handlers.SetActiveHire(player, id)
+	return services.CompanionService:SetActive(player, if type(id) == "string" then id else "")
 end
 function handlers.StashCharm(player, uid)
 	return services.CharmService:Stash(player, str(uid))

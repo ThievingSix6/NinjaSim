@@ -257,7 +257,9 @@ end
 -- Applies damage. Returns true if this hit killed the enemy. `knockback` scales the
 -- push away from `fromPosition` (1 = a normal shove); `stun` stops the enemy moving
 -- and attacking for that many seconds (combo hits, finishers).
-function EnemyService:Damage(enemy, player: Player, amount: number, fromPosition: Vector3?, knockback: number?, stun: number?): boolean
+-- `source`: a hired ninja (CompanionService) dealing the hit for `player`; the enemy
+-- turns on the ninja instead of the player.
+function EnemyService:Damage(enemy, player: Player, amount: number, fromPosition: Vector3?, knockback: number?, stun: number?, source: any?): boolean
 	if enemy.Dead then
 		return false
 	end
@@ -268,7 +270,7 @@ function EnemyService:Damage(enemy, player: Player, amount: number, fromPosition
 
 	-- aggro onto whoever hits us
 	if not enemy.Target and not enemy.Def.Static then
-		enemy.Target = player
+		enemy.Target = if source and not enemy.IsBoss then source else player
 	end
 
 	-- knockback and hit stun for regular enemies
@@ -415,10 +417,31 @@ function EnemyService:Populate(now: number)
 	end
 end
 
+-- A hired ninja turns this enemy on itself (Iron Samurai's roar).
+function EnemyService:Taunt(enemy, companion)
+	if enemy.Dead or enemy.IsBoss or enemy.Def.Static then
+		return
+	end
+	releaseTurn(enemy)
+	enemy.Target = companion
+end
+
 -- ===== AI =====
+-- Targets are players, or hired ninjas (CompanionService tables, `Companion = true`).
 local function acquireTarget(enemy, players: { Player })
 	local pos = enemy.Root.Position
 	local best, bestDist = nil, enemy.AggroRange or enemy.Def.AggroRange
+	if services.CompanionService then
+		for _, c in ipairs(services.CompanionService:InZone(enemy.Zone.Id)) do
+			if c.DownUntil == 0 then
+				local d = flatDistance(c.Root.Position, pos)
+				-- a little less tempting than a player
+				if d + 4 < bestDist and flatDistance(c.Root.Position, enemy.Home) < 60 then
+					best, bestDist = c, d + 4
+				end
+			end
+		end
+	end
 	for _, player in ipairs(players) do
 		local character = player.Character
 		local root = character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
@@ -433,7 +456,10 @@ local function acquireTarget(enemy, players: { Player })
 	return best
 end
 
-local function targetRoot(player: Player?): BasePart?
+local function targetRoot(player: any?): BasePart?
+	if typeof(player) == "table" and player.Companion then
+		return if not player.Dead and player.DownUntil == 0 and player.Model.Parent then player.Root else nil
+	end
 	if not player or not player.Parent then
 		return nil
 	end
@@ -445,7 +471,7 @@ local function targetRoot(player: Player?): BasePart?
 	return character:FindFirstChild("HumanoidRootPart") :: BasePart?
 end
 
-function EnemyService:EnemyAttack(enemy, player: Player)
+function EnemyService:EnemyAttack(enemy, player: any)
 	enemy.LastAttack = os.clock()
 	enemy.Model:SetAttribute("AttackTick", (enemy.Model:GetAttribute("AttackTick") or 0) + 1)
 	-- the hit lands after a readable windup (Balance.EnemyWindup), in time with the
@@ -456,6 +482,12 @@ function EnemyService:EnemyAttack(enemy, player: Player)
 		end
 		local root = targetRoot(player)
 		if not root then
+			return
+		end
+		if typeof(player) == "table" and player.Companion then
+			if flatDistance(root.Position, enemy.Root.Position) <= enemy.Radius + 6.5 then
+				services.CompanionService:Hurt(player, enemy.Damage)
+			end
 			return
 		end
 		if flatDistance(root.Position, enemy.Root.Position) <= enemy.Radius + 6.5 then

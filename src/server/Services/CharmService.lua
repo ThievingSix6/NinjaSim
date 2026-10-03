@@ -3,8 +3,9 @@
 	(the same personal light pillars as hats) and land here via Add.
 
 	Requests (RequestService):
-	  PlaceCharm(uid, x, y)  put a charm in the grid at column x, row y (its top cell);
-	                         moving one already in the grid works the same way
+	  PlaceCharm(uid, x, y, grid?)  put a charm in a grid at column x, row y (its top
+	                         cell); moving one already in a grid works the same way.
+	                         grid: nil = yours, or a hired ninja's id (Config/Hires)
 	  StashCharm(uid)        take it out of the grid (it stops counting)
 	  LockCharm(uid)         toggle the lock (locked charms can't be salvaged)
 	  SalvageCharm(uid)      break it down for Spirit Shards (not locked, not in a trade)
@@ -47,7 +48,7 @@ function CharmService:Add(player: Player, charm): string?
 	end
 	data.CharmSerial = (tonumber(data.CharmSerial) or 0) + 1
 	local uid = tostring(data.CharmSerial)
-	charm.X, charm.Y = nil, nil
+	charm.X, charm.Y, charm.G = nil, nil, nil
 	data.Charms[uid] = charm
 	local x, y = Charms.FreeSpot(data, uid)
 	charm.X, charm.Y = x, y
@@ -56,15 +57,18 @@ function CharmService:Add(player: Player, charm): string?
 	return uid
 end
 
-function CharmService:Place(player: Player, uid: any, x: any, y: any): (boolean, string?)
+function CharmService:Place(player: Player, uid: any, x: any, y: any, grid: any): (boolean, string?)
 	local data, charm = owned(player, uid)
 	if not data or not charm then
 		return false, "You don't have that charm"
 	end
-	if type(x) ~= "number" or type(y) ~= "number" or not Charms.Fits(data, uid, x, y) then
+	if grid ~= nil and (type(grid) ~= "string" or type(data.Hires) ~= "table" or not data.Hires[grid]) then
+		return false, "You haven't hired that ninja"
+	end
+	if type(x) ~= "number" or type(y) ~= "number" or not Charms.Fits(data, uid, x, y, grid) then
 		return false, "It doesn't fit there"
 	end
-	charm.X, charm.Y = x, y
+	charm.X, charm.Y, charm.G = x, y, grid
 	services.DataService:Changed(player, "Charms")
 	return true, nil
 end
@@ -74,7 +78,7 @@ function CharmService:Stash(player: Player, uid: any): (boolean, string?)
 	if not data or not charm then
 		return false, "You don't have that charm"
 	end
-	charm.X, charm.Y = nil, nil
+	charm.X, charm.Y, charm.G = nil, nil, nil
 	services.DataService:Changed(player, "Charms")
 	return true, nil
 end
@@ -149,9 +153,14 @@ local function sanitize(data): boolean
 		end
 	end
 	local active = Charms.Active(data)
+	for id in pairs(type(data.Hires) == "table" and data.Hires or {}) do
+		for uid in pairs(Charms.Active(data, id)) do
+			active[uid] = true
+		end
+	end
 	for uid, charm in pairs(data.Charms) do
-		if (charm.X or charm.Y) and not active[uid] then
-			charm.X, charm.Y = nil, nil
+		if (charm.X or charm.Y or charm.G) and not active[uid] then
+			charm.X, charm.Y, charm.G = nil, nil, nil
 			changed = true
 		end
 	end

@@ -34,7 +34,14 @@ function Menu.Build(ctx)
 	local list = Common.Grid(content, { List = true, Gap = 8, Size = UDim2.new(0.6, -6, 1, 0) })
 	local statsPanel = Kit.Panel({ Size = UDim2.new(0.4, -6, 1, 0), Position = UDim2.new(0.6, 6, 0, 0), Color = Theme.Panel2, Radius = 14, Parent = content })
 	Kit.Label({ Text = "Your Stats", Font = Theme.FontTitle, TextSize = 26, XAlign = Enum.TextXAlignment.Center, Size = UDim2.new(1, 0, 0, 34), Position = UDim2.fromOffset(0, 8), StrokeThickness = 3, Parent = statsPanel })
-	local statsList = Kit.New("Frame", { BackgroundTransparency = 1, Size = UDim2.new(1, -20, 1, -54), Position = UDim2.fromOffset(10, 46), Name = "Stats", Parent = statsPanel })
+	local statsList = Kit.New("Frame", { BackgroundTransparency = 1, Size = UDim2.new(1, -20, 1, -104), Position = UDim2.fromOffset(10, 46), Name = "Stats", Parent = statsPanel })
+	-- codes moved here from the HUD (its tile became Hire)
+	Kit.Button({
+		Text = "Redeem Codes", Icon = "Codes", Color = "Pink", TextSize = 16, Size = UDim2.new(1, -20, 0, 42), Position = UDim2.new(0, 10, 1, -52), Parent = statsPanel,
+		OnClick = function()
+			ctx.Controllers.MenuManager:Open("Codes")
+		end,
+	})
 	Kit.List(Enum.FillDirection.Vertical, 4).Parent = statsList
 	local STATS = {
 		{ "Katana", "Enemies defeated" }, { "Oni", "Bosses defeated" }, { "Egg", "Eggs opened" }, { "Coin", "Coins earned" },
