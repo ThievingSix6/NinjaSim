@@ -197,17 +197,17 @@ Zones.List = {
 			Tint = rgb(240, 220, 255), Saturation = 0.3, Contrast = 0.25,
 		},
 	},
-	-- The Cursed Temple (2026-10-03): the hardcore endgame. Its own unlock at Level 70
+	-- The Cursed Temple (2026-10-03): the hardcore endgame. Its own unlock at Level 500
 	-- (Standalone: no need to unlock the Void first; reach it from the Areas menu). The
 	-- surface is a blighted valley round a ruined temple; its gate leads down into the
 	-- 100 floors below (Config/Temple, TempleService).
 	{
-		Id = "temple", Name = "The Cursed Temple", Level = 70, CostLevel = 60, CostKills = 70, Standalone = true,
-		Boss = { Enemy = "CursedAbbot", Level = 160, Respawn = 300 },
+		Id = "temple", Name = "The Cursed Temple", Level = 500, CostLevel = 480, CostKills = 70, Standalone = true,
+		Boss = { Enemy = "CursedAbbot", Level = 600, Respawn = 300 },
 		Camps = {
-			{ Enemy = "CursedMonk", Level = 72, Count = 6, Offset = v2(-110, -100), Radius = 24 },
-			{ Enemy = "TempleGhoul", Level = 80, Count = 6, Offset = v2(10, 115), Radius = 24 },
-			{ Enemy = "HollowSamurai", Level = 90, Count = 4, Offset = v2(145, -100), Radius = 22 },
+			{ Enemy = "CursedMonk", Level = 502, Count = 6, Offset = v2(-110, -100), Radius = 24 },
+			{ Enemy = "TempleGhoul", Level = 515, Count = 6, Offset = v2(10, 115), Radius = 24 },
+			{ Enemy = "HollowSamurai", Level = 530, Count = 4, Offset = v2(145, -100), Radius = 22 },
 		},
 		Theme = {
 			Ground = Enum.Material.Mud, GroundColor = rgb(48, 30, 30),

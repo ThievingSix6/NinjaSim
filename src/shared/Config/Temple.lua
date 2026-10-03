@@ -4,7 +4,7 @@
 
 	Each run is your own: the gate in the ruined temple puts you in a sealed chamber
 	deep below the valley. Kill every monster on the floor and the seal in the middle
-	opens; step on it to go down. Monsters start at Level 70 (BaseLevel) and get
+	opens; step on it to go down. Monsters start at Level 550 (BaseLevel) and get
 	LevelPerFloor levels stronger every floor, with bigger packs and more brutes the
 	deeper you go. Every 10th floor is a boss floor. Dying, leaving or logging out ends
 	the run.
@@ -18,8 +18,8 @@
 local Temple = {}
 
 Temple.Floors = 100
-Temple.BaseLevel = 70
-Temple.LevelPerFloor = 5 -- floor 100 monsters are Level 565, past the Void Emperor
+Temple.BaseLevel = 550 -- above the temple area itself (Lv 500)
+Temple.LevelPerFloor = 5 -- floor 100 monsters are Level 1045
 Temple.CheckpointEvery = 10
 Temple.CharmBoost = 2 -- charm drop chance inside the temple
 Temple.Aggro = 70 -- temple monsters spot you from across the chamber

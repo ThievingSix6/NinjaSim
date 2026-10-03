@@ -1729,8 +1729,8 @@ return function(E)
 		end
 		table.sort(levels)
 		print("floor 1 monster levels", levels[1], "to", levels[#levels])
-		if levels[1] < 70 then
-			report("scenario", "temple floor 1 monsters are below Level 70")
+		if levels[1] < E.shared("Config.Temple").BaseLevel then
+			report("scenario", "temple floor 1 monsters are below the temple's base level")
 		end
 		local shards0 = data.Shards
 		for enemy in pairs(table.clone(run.Alive)) do
