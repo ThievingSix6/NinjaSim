@@ -39,6 +39,8 @@ Net.Events = {
 	"Attack",
 	"Dodge", -- the local player rolled (CombatService opens the i-frames)
 	"CancelAttack", -- the local player jumped out of a swing's wind-up (CombatService cancels it)
+	"HeavyCharge", -- client -> server: started charging a heavy attack (CombatService)
+	"HeavyAttack", -- client -> server: released the charged heavy attack
 	"Duel", -- duel invites, start, hits and results (DuelService)
 	"Temple", -- Cursed Temple gate, floors, clears and run end (TempleService)
 }

@@ -7,6 +7,10 @@
 	moment the client animates it), so a dodge or a jump ("CancelAttack") during the
 	wind-up cancels the swing: fluid combat with no free damage from cancelled swings.
 
+	Heavy attacks: "HeavyCharge" marks when the player starts charging, "HeavyAttack"
+	the release; the server times the charge itself (Combo.HeavyMove), so a client can't
+	claim a full charge it didn't hold. The heavy strike resolves like a swing.
+
 	It also keeps each player's stamina (Util/Stamina): every swing and dodge spends it,
 	and the server refuses actions the pool can't cover. A dodge ("Dodge" event) opens
 	the i-frame window that EnemyService and BossService check with IsInvulnerable.
@@ -25,7 +29,7 @@ local Stamina = require(Shared.Util.Stamina)
 local CombatService = {}
 
 local services
-local state: { [Player]: { LastSwing: number, Combo: number, LastHit: number, Burst: number, BurstStart: number, Strikes: number, Chain: number, Weapon: string?, Stamina: Stamina.Pool, LastDodge: number, IFrames: { number }, Pending: any? } } = {}
+local state: { [Player]: { LastSwing: number, Combo: number, LastHit: number, Burst: number, BurstStart: number, Strikes: number, Chain: number, Weapon: string?, Stamina: Stamina.Pool, LastDodge: number, IFrames: { number }, Pending: any?, ChargeStart: number?, HeavyAt: number } } = {}
 
 -- seconds of extra regen the server allows for network jitter between two actions
 local STAMINA_SLACK = 0.3
@@ -35,14 +39,14 @@ local function getState(player: Player)
 	local s = state[player]
 	if not s then
 		local now = os.clock()
-		s = { LastSwing = 0, Combo = 0, LastHit = 0, Burst = 0, BurstStart = 0, Strikes = 0, Chain = 0, Stamina = Stamina.new(now), LastDodge = 0, IFrames = { 0, 0 } }
+		s = { LastSwing = 0, Combo = 0, LastHit = 0, Burst = 0, BurstStart = 0, Strikes = 0, Chain = 0, Stamina = Stamina.new(now), LastDodge = 0, IFrames = { 0, 0 }, HeavyAt = 0 }
 		state[player] = s
 	end
 	return s
 end
 
 -- The swing's blade lands: hit what is in front now (live position and facing).
-local function resolveSwing(player: Player, move, chain: number)
+local function resolveSwing(player: Player, move, chain: number, heavy: boolean?)
 	local stats = services.StatService:Get(player)
 	local character = player.Character
 	local root = character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
@@ -119,7 +123,7 @@ local function resolveSwing(player: Player, move, chain: number)
 			end
 		end
 	end
-	Net.Event("CombatResult"):FireClient(player, { Hits = results, Combo = s.Combo, Move = chain })
+	Net.Event("CombatResult"):FireClient(player, { Hits = results, Combo = s.Combo, Move = chain, Heavy = heavy == true })
 	if services.LootService then
 		services.LootService:OnHit(player, hits) -- hat procs
 	end
@@ -148,7 +152,7 @@ local function onAttack(player: Player, comboIndex: any)
 	-- finisher the longest), plus a burst cap as a second line of defence.
 	local previous = if s.Chain > 0 then Combo.Get(s.Chain, weapon) else nil
 	local cooldown = stats.AttackInterval * (if previous then previous.Cooldown else 1)
-	if now - s.LastSwing < cooldown * 0.75 then
+	if now - s.LastSwing < cooldown * 0.75 or now - s.HeavyAt < stats.AttackInterval * Combo.Heavy.Recovery * 0.75 then
 		s.Strikes += 1
 		if s.Strikes == 50 then
 			warn(string.format("[CombatService] %s is swinging faster than allowed", player.Name))
@@ -198,16 +202,86 @@ local function onAttack(player: Player, comboIndex: any)
 	end)
 end
 
--- Cancels a swing whose blade hasn't landed yet (dodge or jump). The combo starts
--- over and the next swing may start right away. Returns true if one was pending.
+local function weaponOf(player: Player): string
+	local data = services.DataService:Get(player)
+	local equipped = data and Katanas.Get(data.EquippedKatana)
+	return if equipped and equipped.Weapon then equipped.Weapon else "Katana"
+end
+
+-- The heavy attack starts charging.
+local function onHeavyCharge(player: Player)
+	local character = player.Character
+	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+	if not humanoid or humanoid.Health <= 0 then
+		return
+	end
+	getState(player).ChargeStart = os.clock()
+end
+
+-- ... and is released: the strike, as strong as the charge the server timed.
+local function onHeavyAttack(player: Player)
+	local stats = services.StatService:Get(player)
+	local character = player.Character
+	local root = character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
+	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+	local s = getState(player)
+	local start = s.ChargeStart
+	s.ChargeStart = nil
+	if not stats or not root or not humanoid or humanoid.Health <= 0 or not start then
+		return
+	end
+	local now = os.clock()
+	local weapon = weaponOf(player)
+	local previous = if s.Chain > 0 then Combo.Get(s.Chain, weapon) else nil
+	local cooldown = stats.AttackInterval * (if previous then previous.Cooldown else 1)
+	if now - s.LastSwing < cooldown * 0.75 or now - s.HeavyAt < stats.AttackInterval * Combo.Heavy.Recovery * 0.75 then
+		return
+	end
+	if not Stamina.CanAct(s.Stamina, now, STAMINA_SLACK) then
+		return
+	end
+	local move = Combo.HeavyMove(weapon, (now - start) / Combo.Heavy.ChargeTime)
+	Stamina.Spend(s.Stamina, now, Stamina.MoveCost(move))
+	s.HeavyAt = now
+	s.LastSwing = now
+	s.Chain = 0 -- the next light attack opens a fresh combo
+	local moves = Combo.MovesFor(weapon)
+	for _, other in ipairs(Players:GetPlayers()) do
+		if other ~= player then
+			local oc = other.Character
+			local oroot = oc and oc:FindFirstChild("HumanoidRootPart") :: BasePart?
+			if oroot and (oroot.Position - root.Position).Magnitude < 120 then
+				Net.Event("Swing"):FireClient(other, player, #moves) -- looks like the finisher
+			end
+		end
+	end
+	local duration = move.Duration * math.clamp(stats.AttackInterval / Balance.BaseAttackInterval, 0.45, 1)
+	local token = {}
+	s.Pending = token
+	task.delay(math.max(0, move.HitAt * duration - LANDING_SLACK), function()
+		if s.Pending ~= token then
+			return
+		end
+		s.Pending = nil
+		resolveSwing(player, move, #moves, true)
+	end)
+end
+
+-- Cancels a swing whose blade hasn't landed yet (dodge or jump), or a heavy attack
+-- being charged. The combo starts over and the next swing may start right away.
+-- Returns true if one was pending.
 function CombatService:CancelSwing(player: Player): boolean
 	local s = state[player]
+	if s then
+		s.ChargeStart = nil
+	end
 	if not s or not s.Pending then
 		return false
 	end
 	s.Pending = nil
 	s.Chain = 0
 	s.LastSwing = 0
+	s.HeavyAt = 0
 	return true
 end
 
@@ -297,6 +371,8 @@ end
 function CombatService:Start()
 	Net.Event("Attack").OnServerEvent:Connect(onAttack)
 	Net.Event("Dodge").OnServerEvent:Connect(onDodge)
+	Net.Event("HeavyCharge").OnServerEvent:Connect(onHeavyCharge)
+	Net.Event("HeavyAttack").OnServerEvent:Connect(onHeavyAttack)
 	Net.Event("CancelAttack").OnServerEvent:Connect(function(player)
 		CombatService:CancelSwing(player)
 	end)

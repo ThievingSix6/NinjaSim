@@ -27,13 +27,47 @@
 	  Stun       seconds hit enemies stop moving and attacking
 ]]
 
+local Balance = require(script.Parent.Balance)
+
 local Combo = {}
 
 Combo.ChainWindow = 0.7 -- seconds after a cooldown ends before the chain resets
 
 -- Every move's Duration below is stretched by this (2026-10-02 Souls-style pacing): the
 -- poses are fractions of Duration, so the moves play slower and heavier without retiming.
-Combo.Pace = 1.25
+-- Light attacks 25% faster (2026-10-03): divided by Balance.LightAttackSpeed.
+Combo.Pace = 1.25 / Balance.LightAttackSpeed
+
+-- Momentum (justin, 2026-10-03: "slight momentum to all attacks"): every strike steps
+-- further in (Lunge x LungeScale + LungeAdd), running into a swing carries some of
+-- that speed (Carry studs per stud/s, at most CarryMax), and after the blade lands
+-- the body glides on a little (Follow x the lunge) instead of stopping dead.
+Combo.Momentum = {
+	LungeScale = 1.4,
+	LungeAdd = 0.6,
+	Carry = 0.1,
+	CarryMax = 1.8,
+	Follow = 0.4,
+	FollowTime = 0.3, -- seconds of glide after the hit
+}
+
+-- Heavy attack (justin, 2026-10-03): hold attack to charge, release to strike with the
+-- weapon's finisher, harder the longer it charged. A tap is still a light attack.
+Combo.Heavy = {
+	HoldDelay = 0.22, -- held this long, the press charges a heavy instead of a light attack
+	ChargeTime = 0.9, -- seconds to full charge
+	MaxHold = 2.4, -- a charge held this long is released on its own
+	MinDamage = 1.8, -- damage multiplier at no charge
+	MaxDamage = 3.4, -- at full charge
+	Knockback = 2.6,
+	Stun = 0.8,
+	Reach = 1.5,
+	Arc = 0,
+	ExtraTargets = 2,
+	Lunge = 4.5,
+	Recovery = 1.7, -- attack intervals before the next swing
+	DurationScale = 1.1, -- plays a touch slower than the finisher it borrows
+}
 
 -- Reach (2026-10-02): no weapon cuts further round the player than the katana. Only one
 -- move per weapon hits all the way round (Arc -1) and it has no extra Reach; spear
@@ -813,7 +847,52 @@ Combo.Sets = {
 for _, moves in pairs(Combo.Sets) do
 	for _, move in ipairs(moves) do
 		move.Duration *= Combo.Pace
+		move.Lunge = move.Lunge * Combo.Momentum.LungeScale + Combo.Momentum.LungeAdd
 	end
+end
+
+-- The heavy attack for a weapon at `charge` (0..1): its combo finisher, reweighted.
+function Combo.HeavyMove(weapon: string?, charge: number)
+	local moves = Combo.MovesFor(weapon)
+	local h = Combo.Heavy
+	local k = math.clamp(charge, 0, 1)
+	local move = table.clone(moves[#moves])
+	move.Name = "Heavy"
+	move.Heavy = true
+	move.Finisher = true
+	move.Charge = k
+	move.Duration *= h.DurationScale
+	move.Cooldown = h.Recovery
+	move.Damage = h.MinDamage + (h.MaxDamage - h.MinDamage) * k
+	move.Knockback = h.Knockback * (0.6 + 0.4 * k)
+	move.Stun = h.Stun * (0.6 + 0.4 * k)
+	move.Reach = h.Reach
+	move.Arc = h.Arc
+	move.ExtraTargets = h.ExtraTargets
+	move.Width = nil
+	move.Lunge = h.Lunge
+	return move
+end
+
+-- The wind-up held while charging: the finisher's first key, held.
+local chargePoses = {}
+function Combo.ChargePose(weapon: string?)
+	local kind = weapon or "Katana"
+	if not chargePoses[kind] then
+		local moves = Combo.MovesFor(kind)
+		local first = moves[#moves].Keys[1]
+		local a, b = table.clone(first), table.clone(first)
+		-- a low, braced stance whatever the finisher's legs do (some finishers leap)
+		for _, key in ipairs({ a, b }) do
+			key.RootPos = { 0, -0.6, 0 }
+			key.RightHip, key.RightKnee = { 50, 0, 8 }, { -80, 0, 0 }
+			key.LeftHip, key.LeftKnee = { -25, 0, -8 }, { -30, 0, 0 }
+		end
+		a.T, a.Ease = 0.12, "Out"
+		b.T, b.Ease = 1, "Linear"
+		chargePoses[kind] = { Name = "Charge", Keys = { a, b }, Trail = { 2, 2 } }
+	end
+	return chargePoses[kind]
 end
 
 -- Shop / inventory label for a weapon type, e.g. "Spear, 6-hit combo".

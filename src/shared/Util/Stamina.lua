@@ -44,6 +44,9 @@ end
 
 -- What a combo move costs.
 function Stamina.MoveCost(move): number
+	if move and move.Heavy then
+		return Balance.Stamina.Heavy
+	end
 	return if move and move.Finisher then Balance.Stamina.Finisher else Balance.Stamina.Attack
 end
 

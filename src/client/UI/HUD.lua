@@ -518,24 +518,15 @@ function HUD:Start(c)
 			Icon = "Katana", IconSize = 80, Color = "Red", Size = UDim2.fromOffset(124, 124), Radius = 62,
 			Position = UDim2.new(1, -150, 1, -240), AnchorPoint = Vector2.new(0.5, 0.5), StrokeThickness = 4, Parent = root,
 		})
-		attack.MouseButton1Down:Connect(function()
-			c.CombatController:Swing()
-		end)
-		local held = false
+		-- tap for a light attack, hold to charge a heavy one
 		attack.InputBegan:Connect(function(input)
 			if input.UserInputType == Enum.UserInputType.Touch then
-				held = true
-				task.spawn(function()
-					while held do
-						c.CombatController:Swing()
-						task.wait(0.05)
-					end
-				end)
+				c.CombatController:PressAttack()
 			end
 		end)
 		attack.InputEnded:Connect(function(input)
 			if input.UserInputType == Enum.UserInputType.Touch then
-				held = false
+				c.CombatController:ReleaseAttack()
 			end
 		end)
 		-- dodge roll: rolls the way the thumbstick points, or hops back

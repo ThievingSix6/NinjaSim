@@ -713,6 +713,89 @@ return function(E)
 		end
 	end)
 
+	step("heavy attack + momentum", function()
+		local CC = E.cm("Controllers.CombatController")
+		local ES = E.sm("EnemyService")
+		local Net = E.shared("Net")
+		local Combo = E.shared("Config.Combo")
+		local root = player.Character.HumanoidRootPart
+		local hits = {}
+		local conn = Net.Event("CombatResult").OnClientEvent:Connect(function(result)
+			for _, hit in ipairs(result.Hits) do
+				table.insert(hits, { Damage = hit.Damage, Heavy = result.Heavy, Crit = hit.Crit })
+			end
+		end)
+		local enemy
+		for _, e in pairs(ES.All) do
+			if not e.Dead and not e.IsBoss then
+				enemy = e
+				break
+			end
+		end
+		if not enemy then
+			report("scenario", "no enemy for the heavy attack test")
+			conn:Disconnect()
+			return
+		end
+		enemy.MaxHealth, enemy.Health = 1e12, 1e12
+		local function place(dist: number)
+			E.sm("ZoneService"):MarkTeleported(player)
+			root.CFrame = CFrame.new(enemy.Root.Position + Vector3.new(dist, 0, 0)) * CFrame.Angles(0, math.pi / 2, 0)
+		end
+		-- a tap: a light attack, and it steps in a little
+		task.wait(1.2)
+		freshStamina()
+		place(9)
+		local x0 = root.Position.X
+		CC:PressAttack()
+		task.wait(0.05)
+		CC:ReleaseAttack()
+		task.wait(1.0)
+		print("tap: hits", #hits, "heavy", hits[1] and hits[1].Heavy, "| stepped", string.format("%.2f", x0 - root.Position.X), "studs")
+		if #hits == 0 or hits[1].Heavy then
+			report("scenario", "a tap of attack didn't make a light attack")
+		end
+		if x0 - root.Position.X < 1 then
+			report("scenario", "a light attack carried no momentum")
+		end
+		local light = hits[1] and hits[1].Damage or 0
+		-- a hold: charges, then a heavy attack on release
+		table.clear(hits)
+		task.wait(1.2)
+		freshStamina()
+		place(5)
+		CC:PressAttack()
+		task.wait(Combo.Heavy.HoldDelay + Combo.Heavy.ChargeTime + 0.2)
+		local charging, charge = CC:IsCharging()
+		print("holding: charging", charging, "charge", string.format("%.2f", charge), "| attacking (slow walk)", CC:IsAttacking())
+		if not charging or charge < 0.99 then
+			report("scenario", "holding attack didn't charge a heavy attack")
+		end
+		CC:ReleaseAttack()
+		task.wait(1.2)
+		print("heavy: hits", #hits, "heavy", hits[1] and hits[1].Heavy, "damage", hits[1] and hits[1].Damage, "vs light", light)
+		if #hits == 0 or not hits[1].Heavy then
+			report("scenario", "releasing a charge didn't land a heavy attack")
+		elseif not hits[1].Crit and hits[1].Damage < light * 2.2 then
+			report("scenario", "the heavy attack isn't much stronger than a light one")
+		end
+		-- a dodge while charging cancels it
+		table.clear(hits)
+		task.wait(1.5)
+		freshStamina()
+		place(5)
+		CC:PressAttack()
+		task.wait(Combo.Heavy.HoldDelay + 0.3)
+		CC:CancelSwing(true)
+		CC:ReleaseAttack()
+		task.wait(1)
+		print("charge cancelled: charging", (CC:IsCharging()), "hits", #hits)
+		if #hits > 0 or CC:IsCharging() then
+			report("scenario", "cancelling a charge still struck")
+		end
+		conn:Disconnect()
+	end)
+
 	step("fluid combat", function()
 		local CC = E.cm("Controllers.CombatController")
 		local DodgeC = E.cm("Controllers.DodgeController")

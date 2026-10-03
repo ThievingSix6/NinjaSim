@@ -145,9 +145,10 @@ local function getRig(character: Model): Rig?
 	return rig
 end
 
--- Plays combo move `index` (1-4) on `character` over `duration` seconds. `lunge`
--- (local player only) steps the character forward during the strike.
-function AnimationController:PlaySwing(character: Model, index: number, duration: number, lunge: { Direction: Vector3, Studs: number }?)
+-- Plays combo move `index` (1-4, or a move table such as Combo.HeavyMove) on
+-- `character` over `duration` seconds. `lunge` (local player only) steps the character
+-- forward during the strike, then lets it glide on `Follow` studs after the hit.
+function AnimationController:PlaySwing(character: Model, index: number | any, duration: number, lunge: { Direction: Vector3, Studs: number, Follow: number? }?)
 	local rig = getRig(character)
 	if not rig then
 		return
@@ -158,7 +159,7 @@ function AnimationController:PlaySwing(character: Model, index: number, duration
 	if previous and previous.Trail and previous.Trail ~= trail then
 		previous.Trail.Enabled = false
 	end
-	local move = Combo.Get(index, Combo.WeaponOf(character))
+	local move = if type(index) == "table" then index else Combo.Get(index, Combo.WeaponOf(character))
 	swings[character] = {
 		Move = move,
 		Airborne = move.Airborne == true,
@@ -171,7 +172,7 @@ function AnimationController:PlaySwing(character: Model, index: number, duration
 		Root = character:FindFirstChild("HumanoidRootPart"),
 		FreezeUntil = 0,
 		Walk = previous and previous.Walk,
-		Lunge = if lunge and lunge.Studs > 0 then { Direction = lunge.Direction, Studs = lunge.Studs, Done = 0 } else nil,
+		Lunge = if lunge and (lunge.Studs > 0 or (lunge.Follow or 0) > 0) then { Direction = lunge.Direction, Studs = lunge.Studs, Follow = lunge.Follow or 0, Done = 0 } else nil,
 	}
 	if trail then
 		trail.Enabled = false
@@ -440,7 +441,13 @@ local function stepSwings(dt: number)
 		if lunge and root then
 			local from, to = move.Trail[1] * 0.6, move.HitAt
 			local p = math.clamp((t - from) / (to - from), 0, 1)
-			local step = (1 - (1 - p) ^ 2) * lunge.Studs - lunge.Done
+			local goal = (1 - (1 - p) ^ 2) * lunge.Studs
+			-- momentum: after the blade lands the body glides on, easing to a stop
+			if lunge.Follow > 0 and t > to then
+				local q = math.clamp((t - to) * s.Duration / Combo.Momentum.FollowTime, 0, 1)
+				goal += (1 - (1 - q) ^ 2) * lunge.Follow
+			end
+			local step = goal - lunge.Done
 			if step > 0.001 then
 				lunge.Done += step
 				root.CFrame += lunge.Direction * step

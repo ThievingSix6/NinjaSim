@@ -15,8 +15,11 @@ local Balance = {}
 -- Combat (justin, 2026-10-02: "slower paced like Dark Souls or Elden Ring"). Swings are
 -- weightier and fewer, each one only cuts what is actually in front of the blade, and
 -- every attack and dodge spends stamina, so a fight is a rhythm of strike, roll, recover.
-Balance.BaseAttackInterval = 0.62 -- seconds between swings
-Balance.MinAttackInterval = 0.36 -- attack speed can't turn swings back into a blur
+-- Light attacks 25% faster (justin, 2026-10-03): the intervals below and Combo.Pace are
+-- divided by LightAttackSpeed, so swings come quicker and play quicker.
+Balance.LightAttackSpeed = 1.25
+Balance.BaseAttackInterval = 0.62 / Balance.LightAttackSpeed -- seconds between swings
+Balance.MinAttackInterval = 0.36 / Balance.LightAttackSpeed -- attack speed can't turn swings back into a blur
 Balance.AttackRange = 13 -- studs from root to enemy root (plus enemy radius)
 Balance.AttackArcDot = -0.1 -- enemies must be roughly in front (cos of ~95 degrees)
 Balance.MaxTargetsPerSwing = 4 -- a swing cuts the few enemies it reaches, not the whole crowd
@@ -36,6 +39,7 @@ Balance.Stamina = {
 	RegenDelay = 0.75, -- seconds after spending before it refills
 	Attack = 14, -- per swing
 	Finisher = 22, -- the combo's last move
+	Heavy = 28, -- a charged heavy attack (Combo.Heavy)
 	Dodge = 24,
 }
 
