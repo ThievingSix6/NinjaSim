@@ -11,6 +11,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Pets = require(Shared.Config.Pets)
 local Rarity = require(Shared.Config.Rarity)
+local Tokens = require(Shared.Config.Tokens)
 local Format = require(Shared.Util.Format)
 local TableUtil = require(Shared.Util.TableUtil)
 local Mutations = require(Shared.Config.Mutations)
@@ -141,6 +142,10 @@ function Menu.Build(ctx)
 		if combined then
 			table.insert(lines, { "Together", Common.OddsText(combined), mutation.Color })
 		end
+		-- the combat token it drops (Config/Tokens)
+		local tokenKind = Tokens.Get(Tokens.PetKind(def))
+		local tokenText = tokenKind.Icon .. " " .. tokenKind.Name .. (if Rarity.Index(def.Rarity) >= Tokens.PetRareFrom then " + rare" else "")
+		table.insert(lines, { "Drops tokens", tokenText, tokenKind.Color })
 		table.insert(lines, { "You own", tostring(sameCount), Theme.SubText })
 		detail:Show({
 			Title = name, Rarity = def.Rarity, Model = Common.PetModel(owned.Id, owned.Mutation), Zoom = Common.PetZoom(1.1, owned.Mutation),

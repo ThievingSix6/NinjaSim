@@ -127,6 +127,9 @@ local function resolveSwing(player: Player, move, chain: number, heavy: boolean?
 	if services.LootService then
 		services.LootService:OnHit(player, hits) -- hat procs
 	end
+	if services.TokenService then
+		services.TokenService:OnSwingHit(player, hits, s.Weapon or "Katana", heavy) -- a chance of a combat token
+	end
 end
 
 local function onAttack(player: Player, comboIndex: any)

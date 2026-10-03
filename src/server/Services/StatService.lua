@@ -78,6 +78,7 @@ function StatService:Refresh(player: Player)
 		stats.Damage = math.floor(stats.Damage * (mods.Damage or 1))
 		stats.AttackInterval *= mods.AttackInterval or 1
 		stats.WalkSpeed *= mods.WalkSpeed or 1
+		stats.CritChance += mods.CritChance or 0 -- Focus tokens (TokenService)
 		stats.Avatar = stats.Avatar or mods.Avatar -- a mastery Avatar is awake (SkillService:CastUltimate)
 	end
 	self.Cache[player] = stats

@@ -91,6 +91,18 @@ return function(E)
 		task.wait(1.2)
 		shot("hud_cooldown")
 	end
+	if only and string.find(only, "Tokens", 1, true) then
+		local TS = E.sm("TokenService")
+		local root = player.Character.HumanoidRootPart
+		for _, kind in ipairs({ "Haste", "Haste", "Haste", "Fury", "Focus", "Focus" }) do
+			local t = TS:Spawn(player, kind, root.Position + E.roblox.Vector3.new(60, 0, 0), 10, "test")
+			E.sm("ZoneService"):MarkTeleported(player)
+			root.CFrame = E.roblox.CFrame.new(t.Position)
+			task.wait(0.3)
+		end
+		task.wait(1.5)
+		shot("hud_tokens")
+	end
 	if only and string.find(only, "Party", 1, true) then
 		-- the party panel, with two fake members (the panel only reads the list)
 		local Net = E.shared("Net")

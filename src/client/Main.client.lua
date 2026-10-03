@@ -39,6 +39,7 @@ local ORDER = {
 	{ "TradeController", Controllers },
 	{ "DuelController", Controllers },
 	{ "PartyController", Controllers },
+	{ "TokenController", Controllers },
 	{ "TempleController", Controllers },
 	{ "MovementController", Controllers },
 	{ "NunchakuController", Controllers },

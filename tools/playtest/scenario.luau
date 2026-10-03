@@ -796,6 +796,81 @@ return function(E)
 		conn:Disconnect()
 	end)
 
+	step("combat tokens", function()
+		local TS = E.sm("TokenService")
+		local SS = E.sm("StatService")
+		local TC = E.cm("Controllers.TokenController")
+		local CC = E.cm("Controllers.CombatController")
+		local DS = E.sm("DataService")
+		local ES = E.sm("EnemyService")
+		local root = player.Character.HumanoidRootPart
+		local data = DS:Get(player)
+		-- spawn a few by hand next to the player, away from them first
+		local here = root.Position
+		local speed0 = SS:Get(player).WalkSpeed
+		local far = here + Vector3.new(40, 0, 0)
+		for _ = 1, 3 do
+			TS:Spawn(player, "Haste", far, 10, "test")
+		end
+		TS:Spawn(player, "Coins", far, 10, "test")
+		task.wait(0.3)
+		print("tokens on the ground: server", #TS:Active(player), "client", TC:Count())
+		if #TS:Active(player) ~= 4 or TC:Count() ~= 4 then
+			report("scenario", "spawned tokens didn't reach the client")
+		end
+		local coins0 = data.Coins
+		for _, token in ipairs(table.clone(TS:Active(player))) do
+			E.sm("ZoneService"):MarkTeleported(player)
+			root.CFrame = CFrame.new(token.Position)
+			task.wait(0.25)
+		end
+		task.wait(0.3)
+		local buffs = TS:Buffs(player)
+		print("after running through them: left", #TS:Active(player), "| haste stacks", buffs.Haste, "| speed", speed0, "->", SS:Get(player).WalkSpeed, "| coins +", data.Coins - coins0)
+		if #TS:Active(player) > 0 then
+			report("scenario", "running through tokens didn't collect them")
+		end
+		if (buffs.Haste or 0) < 3 or SS:Get(player).WalkSpeed <= speed0 then
+			report("scenario", "haste tokens didn't stack a speed buff")
+		end
+		if data.Coins <= coins0 then
+			report("scenario", "a coin token paid nothing")
+		end
+		-- tokens fade if left
+		local token = TS:Spawn(player, "Fury", far + Vector3.new(0, 0, 30), 10, "test")
+		token.Expires = os.clock() + 0.3
+		task.wait(0.8)
+		print("left alone: server", #TS:Active(player), "client", TC:Count())
+		if #TS:Active(player) > 0 then
+			report("scenario", "an uncollected token never faded")
+		end
+		-- fighting drops them on its own (weapon / pet chances)
+		local enemy
+		for _, e in pairs(ES.All) do
+			if not e.Dead and not e.IsBoss then
+				enemy = e
+				break
+			end
+		end
+		local spawned = 0
+		local saved = E.shared("Config.Tokens").Weapon.Chance
+		E.shared("Config.Tokens").Weapon.Chance = 1
+		enemy.MaxHealth, enemy.Health = 1e12, 1e12
+		for _ = 1, 3 do
+			E.sm("ZoneService"):MarkTeleported(player)
+			root.CFrame = CFrame.new(enemy.Root.Position + Vector3.new(4, 0, 0)) * CFrame.Angles(0, math.pi / 2, 0)
+			freshStamina()
+			CC:Swing()
+			task.wait(0.9)
+		end
+		E.shared("Config.Tokens").Weapon.Chance = saved
+		spawned = #TS:Active(player)
+		print("tokens from 3 swings at a 100% weapon chance:", spawned)
+		if spawned == 0 then
+			report("scenario", "hitting enemies never dropped a weapon token")
+		end
+	end)
+
 	step("fluid combat", function()
 		local CC = E.cm("Controllers.CombatController")
 		local DodgeC = E.cm("Controllers.DodgeController")
