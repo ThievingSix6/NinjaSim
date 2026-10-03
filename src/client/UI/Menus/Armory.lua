@@ -17,7 +17,7 @@ local Format = require(Shared.Util.Format)
 
 local Menu = {}
 
-local SOURCE_TEXT = { Tier = "Ninja tier reward", Shop = "Bought in the Shop", Boss = "Boss drop" }
+local SOURCE_TEXT = { Tier = "Ninja tier reward", Shop = "Bought in the Shop", Boss = "Boss drop", Secret = "Seal Shop (secret)" }
 local KIND_ICON = { Aura = "Sparkle", Trail = "Star", KillEffect = "Flame", Title = "Scroll" }
 local KIND_TEXT = { Aura = "Aura", Trail = "Trail", KillEffect = "Kill Effect", Title = "Title" }
 

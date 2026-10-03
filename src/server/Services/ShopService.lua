@@ -10,6 +10,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Balance = require(Shared.Config.Balance)
 local Katanas = require(Shared.Config.Katanas)
+local Secrets = require(Shared.Config.Secrets)
 local Shop = require(Shared.Config.Shop)
 local Net = require(Shared.Net)
 
@@ -51,6 +52,33 @@ function ShopService:BuyKatana(player: Player, katanaId: string): (boolean, stri
 		services.DataService:Changed(player, "EquippedKatana")
 	end
 	return true
+end
+
+-- The Seal Shop (Config/Secrets): secret suits, weapons and pets for Cursed Seals.
+function ShopService:BuySecret(player: Player, id: string?): (boolean, string?)
+	local data = services.DataService:Get(player)
+	local item = id and Secrets.ById[id]
+	if not data or not item then
+		return false, "Unknown item"
+	end
+	if item.Kind == "Suit" and data.Secrets[item.Id] or item.Kind == "Weapon" and data.Katanas[item.Id] then
+		return false, "Already owned"
+	end
+	if (data.Seals or 0) < item.Price then
+		return false, "Not enough Cursed Seals"
+	end
+	data.Seals -= item.Price
+	services.DataService:Changed(player, "Seals")
+	if item.Kind == "Suit" then
+		data.Secrets[item.Id] = true
+		services.DataService:Changed(player, "Secrets")
+	elseif item.Kind == "Weapon" then
+		data.Katanas[item.Id] = true
+		services.DataService:Changed(player, "Katanas")
+	else
+		services.PetService:Grant(player, item.Id)
+	end
+	return true, "Unlocked!"
 end
 
 function ShopService:BuyBoost(player: Player, boostId: string): (boolean, string?)

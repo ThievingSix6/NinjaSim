@@ -407,6 +407,22 @@ Katanas.List = {
 	},
 }
 
+-- secret weapons (Seal Shop, Config/Secrets)
+for _, k in ipairs({
+	{ Id = "secret_soulreaver", Name = "Soulreaver", Mult = 90, Blade = rgb(40, 0, 10), Edge = rgb(255, 40, 60), Particles = "Embers" },
+	{ Id = "secret_jade_dragon", Name = "Jade Dragon Fang", Mult = 130, Blade = rgb(20, 120, 80), Edge = rgb(140, 255, 200), Particles = "Sparkle" },
+	{ Id = "secret_abyss_edge", Name = "Edge of the Abyss", Mult = 180, Blade = rgb(5, 10, 40), Edge = rgb(90, 170, 255), Particles = "Void" },
+}) do
+	table.insert(Katanas.List, {
+		Id = k.Id, Name = k.Name, Rarity = "Secret", Mult = k.Mult, RequiredTier = 1, Source = "Secret",
+		Look = {
+			Blade = k.Blade, BladeMaterial = Enum.Material.ForceField, Edge = k.Edge, EdgeGlow = true, Length = 5.2, Width = 0.36, Curve = 0.2,
+			Guard = "Ring", GuardColor = k.Edge, Handle = rgb(10, 10, 14), Wrap = k.Edge, Pommel = "Gem", Gem = k.Edge,
+			Particles = k.Particles, Light = k.Edge, Trail = { k.Edge, k.Blade },
+		},
+	})
+end
+
 Katanas.ById = {}
 for index, katana in ipairs(Katanas.List) do
 	katana.Order = index

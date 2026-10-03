@@ -92,6 +92,12 @@ function Temple.StartFloors(best: number): { number }
 end
 
 -- Floor-clear reward: Shards, and Coins as kills' worth at the floor's level.
+-- Cursed Seals for clearing a floor (the Seal Shop's currency, Config/Secrets).
+function Temple.Seals(floor: number): number
+	local seals = 1 + math.floor(floor / 10)
+	return if Temple.IsBossFloor(floor) then seals * 3 else seals
+end
+
 function Temple.Reward(floor: number): (number, number)
 	local shards = 2 + math.floor(floor / 5)
 	local kills = 6 + floor * 0.2

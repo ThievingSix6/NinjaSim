@@ -44,7 +44,11 @@ function Menu.Build(ctx)
 	local list = Common.Grid(content, { List = true, Gap = 8, Size = UDim2.new(1, 0, 1, -44), Position = UDim2.fromOffset(0, 44) })
 
 	local rows = {}
-	for _, tier in ipairs(Tiers.List) do
+	local suits = table.clone(Tiers.List)
+	for _, tier in ipairs(Tiers.Secret) do
+		table.insert(suits, tier)
+	end
+	for _, tier in ipairs(suits) do
 		local row = Kit.Panel({ Size = UDim2.new(1, -8, 0, 96), Color = Theme.Panel2, StrokeThickness = 3, Radius = 12, LayoutOrder = tier.Index, Parent = list })
 		local swatch = Kit.Panel({
 			Size = UDim2.fromOffset(78, 78), Position = UDim2.new(0, 8, 0.5, 0), AnchorPoint = Vector2.new(0, 0.5),
@@ -90,14 +94,13 @@ function Menu.Build(ctx)
 			return
 		end
 		local worn = Mastery.WornTier(data)
-		local best = math.max(data.BestTier or 1, data.Tier or 1)
 		for _, r in pairs(rows) do
 			local tier = r.Tier
-			local unlocked = tier.Index <= best
+			local unlocked = Tiers.Owned(data, tier)
 			local level, points = Mastery.Of(data, tier.Id)
 			local api = Kit.Api(r.Button)
 			if not unlocked then
-				r.Mastery.Text = "Reach Level " .. tier.Level
+				r.Mastery.Text = if tier.Secret then "Secret: Seal Shop" else "Reach Level " .. tier.Level
 				r.SetProgress(0, "")
 				api.SetText("Locked")
 				api.SetColor("Slate")

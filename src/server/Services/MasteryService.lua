@@ -46,8 +46,8 @@ function MasteryService:SetSuit(player: Player, tierId: string): (boolean, strin
 		if not tier then
 			return false, "Unknown suit"
 		end
-		if tier.Index > math.max(data.BestTier, data.Tier) then
-			return false, "Reach " .. tier.Name .. " first (Lv " .. tier.Level .. ")"
+		if not Tiers.Owned(data, tier) then
+			return false, if tier.Secret then "Unlock it in the Seal Shop" else "Reach " .. tier.Name .. " first (Lv " .. tier.Level .. ")"
 		end
 		data.Suit = tierId
 	end

@@ -343,12 +343,17 @@ function TempleService:OnEnemyKilled(enemy)
 	local coins = math.floor(Balance.EnemyCoins(Temple.Level(run.Floor)) * kills)
 	services.ProgressionService:AddShards(player, shards)
 	services.ProgressionService:AddCoins(player, coins)
+	local seals = Temple.Seals(run.Floor)
+	if data then
+		data.Seals = (data.Seals or 0) + seals
+		services.DataService:Changed(player, "Seals")
+	end
 	if data and run.Floor > (data.TempleBest or 0) then
 		data.TempleBest = run.Floor
 		services.DataService:Changed(player, "TempleBest")
 	end
 	if run.Floor >= Temple.Floors then
-		event(player, { Type = "Cleared", Floor = run.Floor, Shards = shards, Coins = coins, Last = true })
+		event(player, { Type = "Cleared", Floor = run.Floor, Shards = shards, Coins = coins, Seals = seals, Last = true })
 		for _, other in ipairs(Players:GetPlayers()) do
 			Net.Event("Notify"):FireClient(other, { Text = player.DisplayName .. " conquered all 100 floors of the Cursed Temple!", Color = rgb(255, 60, 40), Big = true })
 		end
@@ -359,7 +364,7 @@ function TempleService:OnEnemyKilled(enemy)
 	hall.Glow.Color = rgb(255, 60, 30)
 	hall.Glow.Transparency = 0.1
 	hall.Prompt.Enabled = true
-	event(player, { Type = "Cleared", Floor = run.Floor, Shards = shards, Coins = coins, Checkpoint = (run.Floor + 1) % Temple.CheckpointEvery == 1 })
+	event(player, { Type = "Cleared", Floor = run.Floor, Shards = shards, Coins = coins, Seals = seals, Checkpoint = (run.Floor + 1) % Temple.CheckpointEvery == 1 })
 end
 
 -- In a run? (Other systems check: the duel service, the zone check.)

@@ -81,6 +81,10 @@ Pets.List = {
 	{ Id = "sunfire_phoenix", Name = "Sunfire Phoenix", Rarity = "Secret", Shape = "Bird", Look = { Kind = "Phoenix" }, Bonus = { Damage = 60, XP = 15, Luck = 1 }, Colors = { Body = rgb(255, 245, 200), Accent = rgb(255, 120, 20), Eyes = rgb(255, 255, 255) }, Particles = "Radiance", Glow = true },
 	{ Id = "storm_emperor", Name = "Storm Emperor", Rarity = "Secret", Shape = "Dragon", Look = { Kind = "Serpent" }, Bonus = { Damage = 120, Coins = 40, Luck = 1.2 }, Colors = { Body = rgb(40, 60, 160), Accent = rgb(200, 245, 255), Eyes = rgb(255, 255, 140) }, Particles = "Lightning", Glow = true },
 	{ Id = "omega_titan", Name = "Omega Void Titan", Rarity = "Secret", Shape = "Dragon", Bonus = { Damage = 400, XP = 120, Coins = 120, Luck = 2 }, Colors = { Body = rgb(0, 0, 0), Accent = rgb(255, 255, 255), Eyes = rgb(255, 80, 255) }, Particles = "Galaxy", Glow = true },
+	-- Seal Shop pets (Config/Secrets): never hatched
+	{ Id = "secret_oni_pup", Name = "Cursed Oni Pup", Rarity = "Secret", Shape = "Blob", Look = { Kind = "OniMask" }, Bonus = { Damage = 150, XP = 30, Luck = 1 }, Colors = { Body = rgb(200, 20, 40), Accent = rgb(20, 0, 0), Eyes = rgb(255, 230, 120) }, Horns = true, Particles = "BloodFlame", Glow = true },
+	{ Id = "secret_temple_koi", Name = "Temple Spirit Koi", Rarity = "Secret", Shape = "Fish", Bonus = { Coins = 150, XP = 60, Luck = 1.2 }, Colors = { Body = rgb(120, 255, 200), Accent = rgb(255, 255, 255), Eyes = rgb(20, 20, 20) }, Particles = "Spirit", Glow = true },
+	{ Id = "secret_abyss_wyrm", Name = "Abyss Wyrm", Rarity = "Secret", Shape = "Dragon", Look = { Kind = "Serpent" }, Bonus = { Damage = 500, XP = 150, Coins = 150, Luck = 2 }, Colors = { Body = rgb(10, 20, 60), Accent = rgb(90, 170, 255), Eyes = rgb(255, 255, 255) }, Particles = "Galaxy", Glow = true },
 	{ Id = "spirit_king", Name = "Ancestral Spirit King", Rarity = "Secret", Shape = "Wisp", Look = { Kind = "Crown" }, Bonus = { XP = 20, Coins = 20, Luck = 1.5 }, Colors = { Body = rgb(255, 255, 255), Accent = rgb(255, 220, 120), Eyes = rgb(120, 255, 240) }, Particles = "Spirit", Glow = true },
 }
 

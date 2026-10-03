@@ -163,6 +163,9 @@ end
 function handlers.PlaceCharm(player, uid, x, y, grid)
 	return services.CharmService:Place(player, str(uid), if type(x) == "number" then x else nil, if type(y) == "number" then y else nil, if type(grid) == "string" then grid else nil)
 end
+function handlers.BuySecret(player, id)
+	return services.ShopService:BuySecret(player, str(id))
+end
 -- hired ninjas (CompanionService)
 function handlers.HireNinja(player, id)
 	return services.CompanionService:Hire(player, str(id))

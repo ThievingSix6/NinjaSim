@@ -49,6 +49,8 @@ return {
 
 	Zones = { village = true },
 	LastZone = "village",
+	Seals = 0, -- Cursed Seals (Config/Secrets), from Cursed Temple floors
+	Secrets = {}, -- [id] = true: secret suits bought (weapons and pets go to Katanas / Pets)
 	TempleBest = 0, -- deepest Cursed Temple floor cleared (TempleService)
 
 	Favorites = {}, -- ["katana:<id>"] / ["cosmetic:<id>"] = true

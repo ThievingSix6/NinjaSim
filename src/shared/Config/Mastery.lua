@@ -239,14 +239,73 @@ Mastery.Sets = {
 	},
 }
 
+-- secret suits (Tiers.Secret): new four-skill mixes. Each borrows a cast (From = its
+-- Kind) from another suit, renamed and hitting Boost x as hard, in the secret suit's colours.
+local SECRET_SETS = {
+	secret_crimson = {
+		{ From = "BloodRend", Name = "Oni Rampage", Boost = 1.25, Desc = "Crimson dashes that tear through everything they cross." },
+		{ From = "DragonBreath", Name = "Oni Breath", Boost = 1.25, Desc = "Breathe a cone of red oni fire that keeps burning." },
+		{ From = "BloodMoon", Name = "Crimson Moon", Boost = 1.25, Desc = "A blood-red moon rises: everything nearby bleeds, then bursts." },
+		{ From = "Supernova", Name = "Oni King's Wrath", Boost = 1.25, Desc = "Gather the oni king's rage and explode in a crimson nova." },
+	},
+	secret_jade = {
+		{ From = "LightningStep", Name = "Jade Step", Boost = 1.3, Desc = "Flash between jade afterimages, cutting through all in the way." },
+		{ From = "PrismBeam", Name = "Emperor's Edict", Boost = 1.3, Desc = "A beam of jade light that pierces everything in a line." },
+		{ From = "JudgmentSwords", Name = "Thousand Jade Blades", Boost = 1.3, Desc = "A rain of jade swords falls on the enemies around you." },
+		{ From = "DawnSanctuary", Name = "Celestial Court", Boost = 1.3, Desc = "Raise the emperor's court: enemies inside burn while you heal." },
+	},
+	secret_abyss = {
+		{ From = "ShadowSwap", Name = "Abyss Step", Boost = 1.35, Desc = "Sink into the abyss and rise behind your foe with a cut." },
+		{ From = "HorizonBeam", Name = "Drowned Horizon", Boost = 1.35, Desc = "A torrent of black water that grinds through a long line." },
+		{ From = "GravityCrush", Name = "Abyssal Maw", Boost = 1.35, Desc = "The abyss opens beneath them: everything is dragged in and crushed." },
+		{ From = "BlackSun", Name = "Leviathan", Boost = 1.35, Desc = "Summon the leviathan's dark sun: it devours the battlefield, then erupts." },
+	},
+}
+local function baseOf(kind: string)
+	for _, set in pairs(Mastery.Sets) do
+		for _, def in ipairs(set) do
+			if def.Kind == kind then
+				return def
+			end
+		end
+	end
+	for _, def in ipairs(Mastery.Kinds) do
+		if def.Kind == kind then
+			return def
+		end
+	end
+	return nil
+end
+for suitId, specs in pairs(SECRET_SETS) do
+	local set = {}
+	for _, spec in ipairs(specs) do
+		local base = baseOf(spec.From)
+		if base then
+			local def = table.clone(base)
+			def.Name, def.Desc = spec.Name, spec.Desc
+			for _, key in ipairs({ "Damage", "BlastDamage" }) do
+				if type(def[key]) == "number" then
+					def[key] *= spec.Boost
+				end
+			end
+			table.insert(set, def)
+		end
+	end
+	Mastery.Sets[suitId] = set
+end
+
 Mastery.Keys = { "Z", "X", "C", "V" }
 Mastery.PadKeys = { "Up", "Right", "Down", "Left" }
 
 -- The ultimates, built per suit: Mastery.ById[id] and Mastery.ForSuit(tierId).
 Mastery.ById = {}
 local bySuit: { [string]: { any } } = {}
-for index, tier in ipairs(Tiers.List) do
-	local element = ElementSkills.Elements[index] or ElementSkills.Elements[#ElementSkills.Elements]
+local suits = table.clone(Tiers.List)
+for _, tier in ipairs(Tiers.Secret) do
+	table.insert(suits, tier)
+end
+for index, tier in ipairs(suits) do
+	local element = tier.Element or ElementSkills.Elements[index] or ElementSkills.Elements[#ElementSkills.Elements]
 	local set = Mastery.Sets[tier.Id] or Mastery.Kinds
 	local scale = 1 + Mastery.TierScale * (index - 1)
 	local list = {}
@@ -282,7 +341,7 @@ end
 -- The tier record of the suit `data` is wearing (its chosen suit if unlocked, else its rank's).
 function Mastery.WornTier(data)
 	local chosen = type(data.Suit) == "string" and data.Suit ~= "" and Tiers.ById[data.Suit]
-	if chosen and chosen.Index <= math.max(data.BestTier or 1, data.Tier or 1) then
+	if chosen and Tiers.Owned(data, chosen) then
 		return chosen
 	end
 	return Tiers.Get(data.Tier or 1)

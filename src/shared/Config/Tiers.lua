@@ -138,10 +138,55 @@ Tiers.List = {
 	},
 }
 
+-- Secret suits (2026-10-03): not ranks. Bought with Cursed Seals in the Seal Shop
+-- (Config/Secrets), worn like any suit, each with its own four ultimates (Mastery.Sets).
+-- Element: the colours of their ultimates.
+Tiers.Secret = {
+	{
+		Id = "secret_crimson", Name = "Crimson Oni", Secret = true, Level = 0, Power = 0, HealthMult = 1, Color = rgb(255, 40, 50),
+		Element = { Id = "Blood", Name = "Crimson", Color = rgb(255, 50, 60), Paint = { rgb(255, 90, 90), rgb(140, 0, 20) }, IconTint = rgb(255, 160, 160) },
+		Outfit = {
+			Primary = rgb(30, 4, 8), Secondary = rgb(120, 0, 20), Trim = rgb(255, 50, 50),
+			Material = Enum.Material.SmoothPlastic, EyeColor = rgb(255, 60, 60), EyeGlow = true,
+			Features = { Emblem = true, Scarf = true, Armor = true, GlowLines = true, Horns = true }, Aura = "BloodFlame",
+		},
+	},
+	{
+		Id = "secret_jade", Name = "Jade Emperor", Secret = true, Level = 0, Power = 0, HealthMult = 1, Color = rgb(80, 255, 170),
+		Element = { Id = "Jade", Name = "Jade", Color = rgb(90, 255, 170), Paint = { rgb(140, 255, 200), rgb(10, 130, 80) }, IconTint = rgb(200, 255, 220) },
+		Outfit = {
+			Primary = rgb(10, 60, 40), Secondary = rgb(240, 220, 140), Trim = rgb(90, 255, 170),
+			Material = Enum.Material.Marble, EyeColor = rgb(120, 255, 190), EyeGlow = true,
+			Features = { Emblem = true, Scarf = true, Armor = true, Cape = true, Halo = true }, Aura = "Radiance",
+		},
+	},
+	{
+		Id = "secret_abyss", Name = "Abyssal Shogun", Secret = true, Level = 0, Power = 0, HealthMult = 1, Color = rgb(60, 140, 255),
+		Element = { Id = "Abyss", Name = "Abyss", Color = rgb(70, 150, 255), Paint = { rgb(120, 190, 255), rgb(10, 20, 90) }, IconTint = rgb(170, 210, 255) },
+		Outfit = {
+			Primary = rgb(4, 8, 24), Secondary = rgb(20, 40, 110), Trim = rgb(80, 170, 255),
+			Material = Enum.Material.Glass, EyeColor = rgb(120, 200, 255), EyeGlow = true,
+			Features = { Emblem = true, Scarf = true, Armor = true, GlowLines = true, Cape = true, Horns = true, Orbit = true }, Aura = "Void",
+		},
+	},
+}
+
 Tiers.ById = {}
 for index, tier in ipairs(Tiers.List) do
 	tier.Index = index
 	Tiers.ById[tier.Id] = tier
+end
+for i, tier in ipairs(Tiers.Secret) do
+	tier.Index = #Tiers.List + i -- past every rank (Mastery.TierScale), never reached by levelling
+	Tiers.ById[tier.Id] = tier
+end
+
+-- Whether `data` may wear a suit: a rank reached, or a secret suit bought.
+function Tiers.Owned(data, tier): boolean
+	if tier.Secret then
+		return type(data.Secrets) == "table" and data.Secrets[tier.Id] == true
+	end
+	return tier.Index <= math.max(data.BestTier or 1, data.Tier or 1)
 end
 
 function Tiers.Get(index: number)

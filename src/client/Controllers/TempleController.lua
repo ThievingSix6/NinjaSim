@@ -80,7 +80,7 @@ local function onEvent(payload)
 		setText(string.format("Floor %d  •  %d left", floorNow, payload.Count or 0))
 	elseif payload.Type == "Cleared" then
 		setText(string.format("Floor %d  •  cleared!", floorNow))
-		local reward = string.format("+%d Shards, +%s Coins", payload.Shards or 0, Format.Abbrev(payload.Coins or 0))
+		local reward = string.format("+%d Seals, +%d Shards, +%s Coins", payload.Seals or 0, payload.Shards or 0, Format.Abbrev(payload.Coins or 0))
 		if payload.Last then
 			nc:Callout("The Temple is Conquered!", reward, Color3.fromRGB(255, 210, 60), "Crown", 5)
 			c.SoundController:Play("TierUp")
