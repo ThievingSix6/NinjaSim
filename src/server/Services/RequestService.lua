@@ -134,7 +134,11 @@ function handlers.CastSkill(player, slot, aim)
 	if not s then
 		return false, nil
 	end
-	return services.SkillService:Cast(player, s, aim)
+	local ok, result = services.SkillService:Cast(player, s, aim)
+	if ok then
+		services.DuelService:OnSkill(player, false) -- skills hit a duel opponent in range
+	end
+	return ok, result
 end
 -- hats (LootService)
 function handlers.PickupHat(player, dropId)
@@ -234,7 +238,11 @@ function handlers.CastUltimate(player, slot, aim)
 	if not s then
 		return false, nil
 	end
-	return services.SkillService:CastUltimate(player, s, aim)
+	local ok, result = services.SkillService:CastUltimate(player, s, aim)
+	if ok then
+		services.DuelService:OnSkill(player, true)
+	end
+	return ok, result
 end
 function handlers.Admin(player, command, targetId, value)
 	return services.AdminService:Run(player, command, targetId, value)

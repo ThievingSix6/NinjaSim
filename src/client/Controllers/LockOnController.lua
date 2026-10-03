@@ -57,7 +57,15 @@ local function pick(exclude: Model?, side: number?): Model?
 	look = if look.Magnitude > 0.01 then look.Unit else Vector3.new(0, 0, -1)
 	local right = camera.CFrame.RightVector
 	local best, bestScore = nil, math.huge
-	for _, model in ipairs(CollectionService:GetTagged("Enemy")) do
+	-- enemies, plus your duel opponent while a duel is on
+	local candidates = CollectionService:GetTagged("Enemy")
+	local duel = controllers and controllers.DuelController
+	local foe = duel and duel:Opponent()
+	if foe and foe.Character then
+		candidates = table.clone(candidates)
+		table.insert(candidates, foe.Character)
+	end
+	for _, model in ipairs(candidates) do
 		if model:IsA("Model") and model ~= exclude and alive(model) then
 			local to = (model.PrimaryPart :: BasePart).Position - root.Position
 			local flat = Vector3.new(to.X, 0, to.Z)

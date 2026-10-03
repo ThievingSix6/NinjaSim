@@ -37,7 +37,7 @@ DuelService.InviteSeconds = 30
 DuelService.Countdown = 3
 DuelService.MaxTime = 120
 DuelService.MinWagerLevel = 10
-DuelService.HitShare = 0.07 -- of the target's max health per hit, times the move's Damage
+DuelService.HitShare = 0.0525 -- of the target's max health per hit, times the move's Damage -- 2026-10-03: -25%, duels ended too quickly
 DuelService.ArenaRadius = 46
 
 local services
@@ -309,6 +309,22 @@ end
 
 -- CombatService calls this when a swing's blade lands: hit the opponent if they are in
 -- the move's reach and arc. Returns the hit (for the attacker's feedback) or nil.
+-- Skills in duels: a cast lands on the opponent if they're within SkillRange (a bigger
+-- share of their health than a sword hit; ultimates more), a beat after the cast.
+DuelService.SkillRange = 28
+function DuelService:OnSkill(player: Player, ultimate: boolean)
+	if not duels[player] then
+		return
+	end
+	local move = { Damage = if ultimate then 4 else 2.2, Reach = DuelService.SkillRange - Balance.AttackRange, Arc = -1, Finisher = true }
+	task.delay(0.35, function()
+		local _, root = humanoidOf(player)
+		if root then
+			self:OnSwing(player, move, root.CFrame.LookVector)
+		end
+	end)
+end
+
 function DuelService:OnSwing(player: Player, move, look: Vector3)
 	local duel = duels[player]
 	if not duel or duel.State ~= "Fight" or duel.Over then

@@ -874,7 +874,7 @@ local function cursedTemple(ctx, x: number, z: number)
 	prompt.RequiresLineOfSight = false
 	prompt:SetAttribute("TempleGate", true)
 	prompt.Parent = veil
-	Props.Sign(f, gate * CFrame.new(14, 0, 2) * CFrame.Angles(0, math.pi, 0), "The Cursed Temple", "100 floors down. Few return.", rgb(255, 90, 80))
+	Props.Sign(f, gate * CFrame.new(11, 0, -10), "The Cursed Temple", "100 floors down. Few return.", rgb(255, 90, 80))
 end
 
 function ZoneDecor.Cursed(ctx)
@@ -882,8 +882,10 @@ function ZoneDecor.Cursed(ctx)
 	entranceArch(ctx, function(cf)
 		Props.Torii(f, cf, 16, 18, rgb(26, 16, 18))
 	end)
-	local tx, tz = findSpot(ctx, -150, 95, 22, { MaxSlope = 0.5 }, 48)
-	cursedTemple(ctx, tx or -150, tz or 95)
+	-- beside the road just past the spawn, gate facing the road (2026-10-03: it sat
+	-- against the mountain, hard to reach)
+	local tx, tz = findSpot(ctx, -140, 48, 22, { MaxSlope = 0.5 }, 28)
+	cursedTemple(ctx, tx or -140, tz or 48)
 	ctx.RoadSide(34, 12, function(cf)
 		Props.StoneLantern(f, cf, rgb(255, 50, 40))
 	end)

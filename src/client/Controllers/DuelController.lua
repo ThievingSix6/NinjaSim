@@ -24,6 +24,11 @@ function DuelController:InDuel(): boolean
 	return active ~= nil
 end
 
+-- The player you're dueling (lock-on can target them), or nil.
+function DuelController:Opponent(): Player?
+	return active and active.Opponent or nil
+end
+
 -- Challenge card: bottom right, Accept / Decline, gone after `seconds`.
 local function inviteCard(payload)
 	local Kit, Theme = controllers.Kit, controllers.Theme
