@@ -87,6 +87,37 @@ function ProgressionService:AddXP(player: Player, amount: number)
 	end
 end
 
+-- Sets the level outright (a duel wager). XP into the level is kept if it still fits.
+-- Going up unlocks tiers as usual; going down drops the current tier to the level's
+-- (suits, blades and the best tier reached stay).
+function ProgressionService:SetLevel(player: Player, level: number)
+	local data = services.DataService:Get(player)
+	if not data then
+		return
+	end
+	level = math.max(1, math.floor(level))
+	local before = data.Level
+	data.Level = level
+	data.XP = math.min(data.XP, Balance.XPToNext(level) - 1)
+	services.DataService:Changed(player, "Level")
+	services.DataService:Changed(player, "XP")
+	if level > data.Lifetime.HighestLevel then
+		data.Lifetime.HighestLevel = level
+		services.DataService:Changed(player, "Lifetime")
+	end
+	if level > before then
+		Net.Event("LevelUp"):FireClient(player, level, level - before)
+		self:CheckTier(player)
+	elseif level < before then
+		local tier = Tiers.ForLevel(level).Index
+		if tier < data.Tier then
+			data.Tier = tier
+			services.DataService:Changed(player, "Tier")
+		end
+	end
+	services.StatService:Refresh(player)
+end
+
 function ProgressionService:AddCoins(player: Player, amount: number)
 	local data = services.DataService:Get(player)
 	if not data or amount <= 0 then

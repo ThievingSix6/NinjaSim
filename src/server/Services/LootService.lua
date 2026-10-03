@@ -29,6 +29,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Hats = require(Shared.Config.Hats)
 local Charms = require(Shared.Config.Charms)
+local Temple = require(Shared.Config.Temple)
 local Balance = require(Shared.Config.Balance)
 local HatBuilder = require(Shared.Visuals.HatBuilder)
 local Net = require(Shared.Net)
@@ -186,7 +187,7 @@ function LootService:OnKill(enemy, rewarded: { [Player]: any }, killer: Player?)
 			self:Drop(player, groundPoint(enemy.Root.Position), hat)
 		end
 		-- charms: very rare from anything, and the Hexfire Torch rarer still from bosses
-		if player.Parent and rng:NextNumber() < Charms.DropChance then
+		if player.Parent and rng:NextNumber() < Charms.DropChance * (if enemy.Temple then Temple.CharmBoost else 1) then
 			local stats = services.StatService:Get(player)
 			self:Drop(player, groundPoint(enemy.Root.Position), Charms.Roll(enemy.Level or 1, if stats then stats.Luck else 0, rng), "Charm")
 		end

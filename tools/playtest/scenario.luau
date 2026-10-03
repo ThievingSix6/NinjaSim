@@ -1465,6 +1465,167 @@ return function(E)
 		print("unlocked:", LC:Target() == nil)
 	end)
 
+	step("duel", function()
+		local DC = E.cm("Controllers.DataController")
+		local CC = E.cm("Controllers.CombatController")
+		local DS = E.sm("DataService")
+		local Duel = E.sm("DuelService")
+		local Net = E.shared("Net")
+		local rival = E.addServerPlayer("Duelist", 779)
+		for _ = 1, 60 do
+			if DS:Get(rival) and rival.Character then
+				break
+			end
+			task.wait(0.1)
+		end
+		local mine, theirs = DS:Get(player), DS:Get(rival)
+		if not theirs then
+			report("scenario", "the duel rival never loaded")
+			return
+		end
+		mine.Level = math.max(mine.Level, 30)
+		theirs.Level = 40
+		DS:Changed(player, "Level")
+		local events = {}
+		local conn = Net.Event("Duel").OnClientEvent:Connect(function(payload)
+			table.insert(events, payload.Type)
+		end)
+		print("wager challenge:", DC:Request("DuelRequest", 779, true))
+		print("rival accepts:", Duel:Respond(rival, player.UserId, true))
+		task.wait(0.5)
+		local root = player.Character.HumanoidRootPart
+		local foeRoot = rival.Character.HumanoidRootPart
+		print("in the dojo: y", math.floor(root.Position.Y), "rival y", math.floor(foeRoot.Position.Y), "| in duel", Duel:InDuel(player))
+		if not Duel:InDuel(player) or root.Position.Y < 200 then
+			report("scenario", "the duel did not start in the dojo")
+		end
+		task.wait(Duel.Countdown + 0.3)
+		local myLevel0, theirLevel0 = mine.Level, theirs.Level
+		local t0 = os.clock()
+		while Duel:InDuel(player) and os.clock() - t0 < 40 do
+			-- stand next to them on -X, looking +X (Lune's lookAt mirrors Roblox's in Z)
+			E.sm("ZoneService"):MarkTeleported(player)
+			root.CFrame = CFrame.new(foeRoot.Position - Vector3.new(4, 0, 0)) * CFrame.Angles(0, -math.pi / 2, 0)
+			freshStamina()
+			CC:Swing()
+			task.wait(0.7)
+		end
+		task.wait(0.5)
+		conn:Disconnect()
+		local hum = rival.Character:FindFirstChildOfClass("Humanoid")
+		print("duel over:", not Duel:InDuel(player), "events", table.concat(events, ","), "| rival hp", hum and math.floor(hum.Health))
+		print(string.format("wager: me %d -> %d, rival %d -> %d", myLevel0, mine.Level, theirLevel0, theirs.Level))
+		if Duel:InDuel(player) then
+			report("scenario", "the duel never ended")
+		elseif mine.Level ~= myLevel0 + math.floor(theirLevel0 / 2) or theirs.Level ~= theirLevel0 - math.floor(theirLevel0 / 2) then
+			report("scenario", "the wager did not move the levels")
+		end
+		task.wait(3)
+		print("sent back: y", math.floor(root.Position.Y))
+		E.removeServerPlayer(rival)
+	end)
+
+	step("cursed temple", function()
+		local DC = E.cm("Controllers.DataController")
+		local DS = E.sm("DataService")
+		local TS = E.sm("TempleService")
+		local ES = E.sm("EnemyService")
+		local Net = E.shared("Net")
+		local data = DS:Get(player)
+		-- the gate prompt exists in the ruined temple
+		local gate = nil
+		for _, d in ipairs(E.Workspace:GetDescendants()) do
+			if d:IsA("ProximityPrompt") and d:GetAttribute("TempleGate") then
+				gate = d
+			end
+		end
+		print("temple gate prompt:", gate ~= nil)
+		if not gate then
+			report("scenario", "no Cursed Temple gate prompt in the world")
+		end
+		print("start locked:", DC:Request("TempleStart", 1))
+		data.Zones.temple = true
+		DS:Changed(player, "Zones")
+		print("checkpoint not reached:", DC:Request("TempleStart", 11))
+		local events = {}
+		local conn = Net.Event("Temple").OnClientEvent:Connect(function(payload)
+			table.insert(events, payload.Type .. (if payload.Floor then tostring(payload.Floor) else ""))
+		end)
+		print("start floor 1:", DC:Request("TempleStart", 1))
+		task.wait(2.6)
+		local run = TS:RunOf(player)
+		local root = player.Character.HumanoidRootPart
+		print("in the hall: y", math.floor(root.Position.Y), "| floor", run and run.Floor, "monsters", run and run.Count)
+		if not run or root.Position.Y > -150 or run.Count == 0 then
+			report("scenario", "the temple run did not start in a hall below the valley")
+			conn:Disconnect()
+			return
+		end
+		local levels = {}
+		for enemy in pairs(run.Alive) do
+			table.insert(levels, enemy.Level)
+			if math.abs(enemy.Root.Position.Y - root.Position.Y) > 12 then
+				report("scenario", "a temple monster spawned off the hall floor (y " .. math.floor(enemy.Root.Position.Y) .. ")")
+				break
+			end
+		end
+		table.sort(levels)
+		print("floor 1 monster levels", levels[1], "to", levels[#levels])
+		if levels[1] < 70 then
+			report("scenario", "temple floor 1 monsters are below Level 70")
+		end
+		local shards0 = data.Shards
+		for enemy in pairs(table.clone(run.Alive)) do
+			ES:Kill(enemy, player)
+		end
+		task.wait(0.3)
+		print("cleared:", run.Cleared, "| best", data.TempleBest, "| shards +", data.Shards - shards0)
+		if not run.Cleared or data.TempleBest ~= 1 then
+			report("scenario", "clearing temple floor 1 didn't open the seal / save the depth")
+		end
+		print("descend:", TS:Descend(player))
+		task.wait(2)
+		print("floor now", run.Floor, "monsters", run.Count)
+		if run.Floor ~= 2 or run.Count == 0 then
+			report("scenario", "descending didn't fill floor 2")
+		end
+		-- a boss floor
+		run.Floor = 9
+		for enemy in pairs(table.clone(run.Alive)) do
+			ES:Kill(enemy, player)
+		end
+		task.wait(0.2)
+		TS:Descend(player)
+		task.wait(2)
+		local boss = nil
+		for enemy in pairs(run.Alive) do
+			if enemy.IsBoss then
+				boss = enemy
+			end
+		end
+		print("floor 10 boss:", boss and boss.Def.Id, boss and boss.Level)
+		if not boss then
+			report("scenario", "temple floor 10 has no boss")
+		end
+		print("leave:", DC:Request("TempleLeave"))
+		task.wait(1.2)
+		conn:Disconnect()
+		print("events", table.concat(events, ","))
+		print("back up: y", math.floor(root.Position.Y), "| run over", TS:RunOf(player) == nil)
+		if TS:RunOf(player) or root.Position.Y < -50 then
+			report("scenario", "leaving the temple didn't bring the player back up")
+		end
+		local alive = 0
+		for _, enemy in pairs(ES.All) do
+			if enemy.Temple then
+				alive += 1
+			end
+		end
+		if alive > 0 then
+			report("scenario", alive .. " temple monsters were left behind after the run")
+		end
+	end)
+
 	step("ragdolls", function()
 		local AC = E.cm("Controllers.AnimationController")
 		print("ragdolls made so far", AC.RagdollCount)

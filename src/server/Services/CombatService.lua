@@ -82,6 +82,11 @@ local function resolveSwing(player: Player, move, chain: number)
 		end
 	end
 
+	-- a duel opponent in reach (DuelService) takes the hit too
+	if services.DuelService then
+		services.DuelService:OnSwing(player, move, look)
+	end
+
 	if #hits == 0 then
 		return
 	end

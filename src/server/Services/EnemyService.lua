@@ -53,7 +53,13 @@ local function zoneFolder(zoneId: string): Folder
 	return f :: Folder
 end
 
+-- Ground distance, ignoring height, except that things on different levels (the
+-- Cursed Temple's halls under the valley vs. the valley itself) never count as near.
+local LEVEL_GAP = 60
 local function flatDistance(a: Vector3, b: Vector3): number
+	if math.abs(a.Y - b.Y) > LEVEL_GAP then
+		return math.huge
+	end
 	return Vector3.new(a.X - b.X, 0, a.Z - b.Z).Magnitude
 end
 
@@ -63,7 +69,8 @@ local function randomPointInCircle(center: Vector3, radius: number): Vector3
 	return center + Vector3.new(math.cos(a) * r, 0, math.sin(a) * r)
 end
 
--- opts: { Scale, IsBoss, Slot, Minion }
+-- opts: { Scale, IsBoss, Slot, Minion, GroundY (spawn on this floor height instead of
+-- the terrain: the Cursed Temple's halls), Temple (its run), HealthMult, DamageMult, Aggro }
 function EnemyService:Spawn(defId: string, level: number, zone, position: Vector3, opts: any?)
 	opts = opts or {}
 	local def = Enemies.Get(defId)
@@ -85,7 +92,7 @@ function EnemyService:Spawn(defId: string, level: number, zone, position: Vector
 	end
 	local model, info = EnemyBuilder.Build(def, opts.Scale or size)
 	local root = model.PrimaryPart :: BasePart
-	local ground = services.ZoneService:GroundHeight(position)
+	local ground = opts.GroundY or services.ZoneService:GroundHeight(position)
 	local rootLocalY = root.Position.Y
 	model:PivotTo(CFrame.new(position.X, ground + rootLocalY + 0.1, position.Z) * CFrame.Angles(0, math.random() * math.pi * 2, 0))
 
@@ -95,6 +102,11 @@ function EnemyService:Spawn(defId: string, level: number, zone, position: Vector
 		maxHealth = math.max(1, math.floor(maxHealth * Balance.HordeHealth))
 	end
 	maxHealth = math.max(1, math.floor(maxHealth * size ^ 1.5))
+	local regular = not def.IsBoss and not def.Static
+	if regular then
+		maxHealth = math.floor(maxHealth * Balance.RegularHealthMultiplier)
+	end
+	maxHealth = math.max(1, math.floor(maxHealth * (opts.HealthMult or 1)))
 	local enemy = {
 		Uid = nextUid,
 		Model = model,
@@ -105,7 +117,9 @@ function EnemyService:Spawn(defId: string, level: number, zone, position: Vector
 		Level = level,
 		Health = maxHealth,
 		MaxHealth = maxHealth,
-		Damage = math.max(1, math.floor(Balance.EnemyDamage(level, def.DamageMod) * size + 0.5)),
+		Damage = math.max(1, math.floor(Balance.EnemyDamage(level, def.DamageMod) * size * (if regular then Balance.RegularDamageMultiplier else 1) * (opts.DamageMult or 1) + 0.5)),
+		Temple = opts.Temple,
+		AggroRange = opts.Aggro,
 		XP = math.max(1, math.floor(Balance.EnemyXP(level, def.XPMod) * size + 0.5)),
 		Coins = Balance.EnemyCoins(level, def.CoinMod) * size * Balance.CoinRewardMultiplier,
 		Home = Vector3.new(position.X, ground, position.Z),
@@ -329,6 +343,9 @@ function EnemyService:Kill(enemy, killer: Player?)
 	if enemy.IsBoss then
 		services.BossService:OnBossDefeated(enemy, rewarded)
 	end
+	if enemy.Temple and services.TempleService then
+		services.TempleService:OnEnemyKilled(enemy)
+	end
 
 	removeFromZone(enemy)
 	self.All[enemy.Uid] = nil
@@ -395,7 +412,7 @@ end
 -- ===== AI =====
 local function acquireTarget(enemy, players: { Player })
 	local pos = enemy.Root.Position
-	local best, bestDist = nil, enemy.Def.AggroRange
+	local best, bestDist = nil, enemy.AggroRange or enemy.Def.AggroRange
 	for _, player in ipairs(players) do
 		local character = player.Character
 		local root = character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
@@ -584,7 +601,7 @@ function EnemyService:Start()
 		while true do
 			task.wait(5)
 			for _, enemy in pairs(self.All) do
-				if not enemy.Dead and enemy.Root.Parent and (enemy.Root.Position.Y < -50 or flatDistance(enemy.Root.Position, enemy.Home) > 120) then
+				if not enemy.Dead and enemy.Root.Parent and (enemy.Root.Position.Y < enemy.Home.Y - 50 or flatDistance(enemy.Root.Position, enemy.Home) > 120) then
 					enemy.Root.CFrame = CFrame.new(enemy.Home + Vector3.new(0, 6, 0))
 					enemy.Target = nil
 				end

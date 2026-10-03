@@ -68,7 +68,7 @@ Balance.EnemyDensity = 4
 Balance.CampSpread = 2
 Balance.HordeHealth = 0.6
 Balance.MaxAttackers = 3
-Balance.XPMultiplier = 1 -- XP per kill
+Balance.XPMultiplier = 0.75 -- XP per kill (2026-10-03: -25%; suit mastery points don't use it)
 Balance.CoinRewardMultiplier = 1.5 -- Coins per kill (prices still use EnemyCoins)
 
 Balance.BaseWalkSpeed = 26
@@ -123,6 +123,9 @@ Balance.EnemySizes = {
 
 -- every enemy and boss (justin, 2026-10-01: "double enemy hp across the board")
 Balance.EnemyHealthMultiplier = 2
+-- regular monsters only (not bosses or training dummies), 2026-10-03: "combat is too easy"
+Balance.RegularHealthMultiplier = 2
+Balance.RegularDamageMultiplier = 2
 
 function Balance.EnemyHealth(level: number, mod: number?): number
 	return math.max(10, math.floor(Balance.ExpectedDamage(level) * 4 * Balance.EnemyHealthMultiplier * (mod or 1)))

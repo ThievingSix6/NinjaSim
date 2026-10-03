@@ -29,6 +29,13 @@ function ZoneService:GroundHeight(position: Vector3): number
 		table.insert(filter, world)
 	end
 	rayParams.FilterDescendantsInstances = filter
+	-- far below the valley (the Cursed Temple's halls): the floor just under the point
+	if position.Y < Zones.GroundY - 100 then
+		local below = workspace:Raycast(position + Vector3.new(0, 20, 0), Vector3.new(0, -120, 0), rayParams)
+		if below then
+			return below.Position.Y
+		end
+	end
 	local result = workspace:Raycast(Vector3.new(position.X, 300, position.Z), Vector3.new(0, -600, 0), rayParams)
 	return if result then result.Position.Y else Zones.GroundY
 end
@@ -50,7 +57,7 @@ function ZoneService:CanUnlock(player: Player, zone): (boolean, string?)
 		return false, "Already unlocked"
 	end
 	local previous = Zones.List[zone.Index - 1]
-	if previous and not data.Zones[previous.Id] then
+	if previous and not zone.Standalone and not data.Zones[previous.Id] then
 		return false, "Unlock " .. previous.Name .. " first"
 	end
 	if data.Level < zone.Level then

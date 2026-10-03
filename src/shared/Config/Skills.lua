@@ -141,9 +141,17 @@ for _, def in ipairs(ElementSkills.List) do
 	table.insert(Skills.List, def)
 end
 
+-- 2026-10-03: shorter cooldowns across the board, 80% of each skill's listed value,
+-- at most 15 s (40 s for the Ultimate-kind skill).
+Skills.CooldownScale = 0.8
+Skills.MaxCooldown = 15
+Skills.MaxUltimateCooldown = 40
+
 Skills.ById = {}
 for i, def in ipairs(Skills.List) do
 	def.Order = i
+	local cap = if def.Kind == "Ultimate" then Skills.MaxUltimateCooldown else Skills.MaxCooldown
+	def.Cooldown = math.min(cap, math.floor(def.Cooldown * Skills.CooldownScale * 2 + 0.5) / 2)
 	Skills.ById[def.Id] = def
 end
 

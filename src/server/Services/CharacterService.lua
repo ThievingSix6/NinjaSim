@@ -8,13 +8,11 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
-local Tiers = require(Shared.Config.Tiers)
 local Mastery = require(Shared.Config.Mastery)
 local Katanas = require(Shared.Config.Katanas)
 local Zones = require(Shared.Config.Zones)
 local Shop = require(Shared.Config.Shop)
 local Animations = require(Shared.Config.Animations)
-local Format = require(Shared.Util.Format)
 local KatanaBuilder = require(Shared.Visuals.KatanaBuilder)
 local OutfitBuilder = require(Shared.Visuals.OutfitBuilder)
 local Particles = require(Shared.Visuals.Particles)
@@ -171,7 +169,7 @@ function CharacterService:ApplyCosmetics(player: Player)
 	self:UpdateNameplate(player)
 end
 
--- Overhead plate: title (if any) + "Lv X  Tier Name", visible to everyone.
+-- Overhead plate: title (if any) over the player's Roblox name, visible to everyone.
 function CharacterService:UpdateNameplate(player: Player)
 	local data = services.DataService:Get(player)
 	local character = player.Character
@@ -203,22 +201,20 @@ function CharacterService:UpdateNameplate(player: Player)
 		info.BackgroundTransparency = 1
 		info.Position = UDim2.new(0, 0, 0.42, 0)
 		info.Size = UDim2.new(1, 0, 0.58, 0)
-		info.Font = Enum.Font.LuckiestGuy
+		info.Font = Enum.Font.GothamBold
 		info.TextScaled = true
 		info.TextStrokeTransparency = 0.2
 		info.Parent = g
 		g.Parent = head
 		gui = g
 	end
-	local tier = Tiers.Get(data.Tier)
 	local titleDef = Shop.CosmeticsById[data.Equipped.Title]
 	local titleLabel = (gui :: BillboardGui):FindFirstChild("Title") :: TextLabel
 	local infoLabel = (gui :: BillboardGui):FindFirstChild("Info") :: TextLabel
 	titleLabel.Text = if titleDef then "« " .. titleDef.Name .. " »" else ""
 	titleLabel.TextColor3 = if titleDef then titleDef.Color else Color3.new(1, 1, 1)
-	local rebirthText = if data.Rebirths > 0 then "  ✦" .. Format.Abbrev(data.Rebirths) else ""
-	infoLabel.Text = "Lv " .. Format.Abbrev(data.Level) .. "  " .. tier.Name .. rebirthText
-	infoLabel.TextColor3 = tier.Color
+	infoLabel.Text = player.Name
+	infoLabel.TextColor3 = Color3.new(1, 1, 1)
 end
 
 function CharacterService:RefreshAll(player: Player)

@@ -91,7 +91,7 @@ function Menu.Build(ctx)
 			local r = rows[zone.Id]
 			local unlocked = data.Zones[zone.Id] == true
 			local previous = Zones.List[zone.Index - 1]
-			local nextUp = not unlocked and (previous == nil or data.Zones[previous.Id] == true)
+			local nextUp = not unlocked and (previous == nil or zone.Standalone == true or data.Zones[previous.Id] == true)
 			local api = Kit.Api(r.Button)
 			r.Number.Visible = unlocked or nextUp
 			r.Lock.Visible = not r.Number.Visible

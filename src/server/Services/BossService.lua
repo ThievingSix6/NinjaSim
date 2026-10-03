@@ -29,7 +29,12 @@ local timers: { [string]: number } = {}
 local ARENA_RADIUS = 75
 local FIRST_SPAWN_DELAY = 30
 
+-- Ground distance; things on different levels (the Cursed Temple's halls under the
+-- valley) never count as near.
 local function flat(a: Vector3, b: Vector3): number
+	if math.abs(a.Y - b.Y) > 60 then
+		return math.huge
+	end
 	return Vector3.new(a.X - b.X, 0, a.Z - b.Z).Magnitude
 end
 
@@ -188,6 +193,9 @@ function attacks.Dash(boss)
 		local root = c and c:FindFirstChild("HumanoidRootPart") :: BasePart?
 		if root then
 			local rel = root.Position - start
+			if math.abs(rel.Y) > 60 then
+				continue -- another level (the temple halls below)
+			end
 			local along = rel:Dot(dir)
 			local side = (rel - dir * along)
 			side = Vector3.new(side.X, 0, side.Z)
@@ -256,7 +264,33 @@ function BossService:SpawnBoss(zone)
 	end
 end
 
+-- Floor bosses of the Cursed Temple (TempleService): stepped with the zone bosses but
+-- not tied to a zone's arena or respawn timer.
+local managed: { any } = {}
+function BossService:Manage(boss)
+	boss.NextSpecial = os.clock() + 3
+	boss.Busy = false
+	boss.SummonStage = 0
+	boss.Enraged = false
+	boss.Managed = true
+	table.insert(managed, boss)
+end
+
 function BossService:OnBossDefeated(boss, rewarded)
+	if boss.Managed then
+		local i = table.find(managed, boss)
+		if i then
+			table.remove(managed, i)
+		end
+		if boss.Minions then
+			for _, minion in ipairs(boss.Minions) do
+				if not minion.Dead then
+					services.EnemyService:Kill(minion, nil)
+				end
+			end
+		end
+		return
+	end
 	local zone = boss.Zone
 	self.Active[zone.Id] = nil
 	timers[zone.Id] = os.clock() + zone.Boss.Respawn
@@ -389,6 +423,17 @@ function BossService:Start()
 		end
 		acc = 0
 		local now = os.clock()
+		for i = #managed, 1, -1 do
+			local boss = managed[i]
+			if boss.Dead or not boss.Model.Parent then
+				table.remove(managed, i)
+			else
+				local ok, err = pcall(stepBoss, boss, now)
+				if not ok then
+					warn("[BossService] " .. tostring(err))
+				end
+			end
+		end
 		for _, zone in ipairs(Zones.List) do
 			local boss = self.Active[zone.Id]
 			if boss then

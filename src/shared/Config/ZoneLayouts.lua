@@ -162,4 +162,5 @@ return {
 	volcanic = with(mirror(B), { Roll = 9, Scale = 1.15, CliffHeight = 54, Alt = M.Rock, Ponds = false }),
 	sky = with(mirror(C), { Roll = 8, Scale = 1.3, CliffHeight = 56, Alt = M.Glacier }),
 	void = with(A, { Roll = 6, Scale = 1.1, EdgeNoise = 16, Ponds = false }),
+	temple = with(B, { Roll = 5, EdgeNoise = 14, Ponds = false, Alt = M.Basalt }),
 }

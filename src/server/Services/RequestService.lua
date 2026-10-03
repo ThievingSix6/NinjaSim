@@ -168,6 +168,23 @@ end
 function handlers.SalvageCharm(player, uid)
 	return services.CharmService:Salvage(player, str(uid))
 end
+-- duels (DuelService)
+function handlers.DuelRequest(player, userId, wager)
+	return services.DuelService:Request(player, if type(userId) == "number" then userId else nil, wager == true)
+end
+function handlers.DuelRespond(player, userId, accept)
+	return services.DuelService:Respond(player, if type(userId) == "number" then userId else nil, accept == true)
+end
+function handlers.DuelForfeit(player)
+	return services.DuelService:Forfeit(player)
+end
+-- the Cursed Temple (TempleService)
+function handlers.TempleStart(player, floor)
+	return services.TempleService:StartRun(player, if type(floor) == "number" then floor else 1)
+end
+function handlers.TempleLeave(player)
+	return services.TempleService:Leave(player)
+end
 -- trading (TradeService)
 function handlers.TradeRequest(player, userId)
 	return services.TradeService:Request(player, if type(userId) == "number" then userId else nil)

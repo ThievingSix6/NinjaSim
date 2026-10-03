@@ -24,7 +24,7 @@ function Menu.Build(ctx)
 	local DataController = C.DataController
 
 	local window, content, close = Kit.Window({
-		Name = "Mutate", Title = "Mutation Machine", Icon = "Potion", Accent = "Pink", Size = UDim2.fromOffset(940, 580), Parent = ctx.Parent,
+		Name = "Mutate", Title = "Mutation Machine", Icon = "Potion", Accent = "Pink", Size = UDim2.fromOffset(940, 640), Parent = ctx.Parent,
 	})
 	local kind = "Pet"
 	local selected: string? = nil
@@ -43,19 +43,36 @@ function Menu.Build(ctx)
 	-- right: the chosen item, its mutation, the odds and the roll buttons
 	local panel = Kit.Panel({ Size = UDim2.fromScale(1, 1), Color = Theme.Panel, Radius = 14, Parent = right })
 	local preview = Kit.New("Frame", {
-		Name = "Preview", BackgroundColor3 = Color3.new(1, 1, 1), Size = UDim2.new(1, -20, 0, 150), Position = UDim2.fromOffset(10, 10), ClipsDescendants = true, ZIndex = 2, Parent = panel,
+		Name = "Preview", BackgroundColor3 = Color3.new(1, 1, 1), Size = UDim2.new(1, -20, 0, 110), Position = UDim2.fromOffset(10, 10), ClipsDescendants = true, ZIndex = 2, Parent = panel,
 	})
 	Kit.Corner(12).Parent = preview
 	Kit.Stroke(Theme.Ink, 3).Parent = preview
 	Kit.Paint(preview, "Dark")
-	local title = Kit.Label({ Text = "Pick a pet or a hat", TextSize = 20, XAlign = Enum.TextXAlignment.Center, Wrapped = true, Size = UDim2.new(1, -16, 0, 44), Position = UDim2.fromOffset(8, 164), StrokeThickness = 2.5, Parent = panel })
-	local current = Kit.Label({ Text = "", TextSize = 15, Color = Theme.SubText, XAlign = Enum.TextXAlignment.Center, Wrapped = true, Size = UDim2.new(1, -16, 0, 36), Position = UDim2.fromOffset(8, 206), StrokeThickness = 2, Parent = panel })
-	local odds = Kit.New("Frame", { BackgroundTransparency = 1, Size = UDim2.new(1, -20, 0, 90), Position = UDim2.fromOffset(10, 246), Parent = panel })
-	Kit.New("UIGridLayout", { CellSize = UDim2.new(0.5, -4, 0, 16), CellPadding = UDim2.fromOffset(8, 1), SortOrder = Enum.SortOrder.LayoutOrder, Parent = odds })
+	local title = Kit.Label({ Text = "Pick a pet or a hat", TextSize = 20, XAlign = Enum.TextXAlignment.Center, Wrapped = true, Size = UDim2.new(1, -16, 0, 40), Position = UDim2.fromOffset(8, 122), StrokeThickness = 2.5, Parent = panel })
+	local current = Kit.Label({ Text = "", TextSize = 15, Color = Theme.SubText, XAlign = Enum.TextXAlignment.Center, Wrapped = true, Size = UDim2.new(1, -16, 0, 32), Position = UDim2.fromOffset(8, 160), StrokeThickness = 2, Parent = panel })
+	-- the odds table: each result's chance on a Roll and on a Lucky Roll
+	local odds = Kit.New("Frame", { BackgroundTransparency = 1, Size = UDim2.new(1, -20, 0, 182), Position = UDim2.fromOffset(10, 194), Parent = panel })
+	Kit.List(Enum.FillDirection.Vertical, 1).Parent = odds
+	local function oddsRow(order: number, height: number, color: Color3, font: Enum.Font, size: number)
+		local row = Kit.New("Frame", { BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, height), LayoutOrder = order, Parent = odds })
+		local function cell(x: number, w: number, align: Enum.TextXAlignment, c: Color3)
+			return Kit.Label({ Text = "", Font = font, TextSize = size, Color = c, XAlign = align, Size = UDim2.new(w, 0, 1, 0), Position = UDim2.fromScale(x, 0), StrokeThickness = 1.5, Parent = row })
+		end
+		return {
+			Name = cell(0, 0.46, Enum.TextXAlignment.Left, color),
+			Normal = cell(0.46, 0.25, Enum.TextXAlignment.Right, Theme.White),
+			Lucky = cell(0.71, 0.29, Enum.TextXAlignment.Right, Theme.Paint.Purple[1]),
+		}
+	end
+	local header = oddsRow(0, 18, Theme.SubText, Theme.FontTitle, 14)
+	header.Name.Text = "Odds"
+	header.Normal.Text = "Roll"
+	header.Lucky.Text = "Lucky Roll"
 	local oddsRows = {}
 	for i, w in ipairs(Mutations.Machine.Weights) do
 		local m = Mutations.Get(w.Id) :: any
-		oddsRows[w.Id] = Kit.Label({ Text = "", Font = Theme.FontBody, TextSize = 13, Color = m.Color, LayoutOrder = i, Size = UDim2.fromScale(1, 1), StrokeThickness = 1.5, Parent = odds })
+		oddsRows[w.Id] = oddsRow(i, 17, m.Color, Theme.FontBody, 14)
+		oddsRows[w.Id].Name.Text = m.Name
 	end
 	local function roll(lucky: boolean)
 		if busy or not selected then
@@ -148,11 +165,12 @@ function Menu.Build(ctx)
 		local stats = DataController:GetStats()
 		local luck = stats and stats.Luck or 0
 		local normal, lucky = Mutations.MachineOdds(false, luck), Mutations.MachineOdds(true, luck)
-		for id, label in pairs(oddsRows) do
-			local function pct(v: number): string
-				return if v < 0.01 then string.format("%.2f%%", v * 100) else string.format("%.1f%%", v * 100)
-			end
-			label.Text = string.format("%s  %s  (%s)", Mutations.Get(id).Name, pct(normal[id]), pct(lucky[id]))
+		local function pct(v: number): string
+			return if v < 0.01 then string.format("%.2f%%", v * 100) else string.format("%.1f%%", v * 100)
+		end
+		for id, row in pairs(oddsRows) do
+			row.Normal.Text = pct(normal[id])
+			row.Lucky.Text = pct(lucky[id]) .. (if lucky[id] > normal[id] * 1.01 then " ▲" else "")
 		end
 	end
 

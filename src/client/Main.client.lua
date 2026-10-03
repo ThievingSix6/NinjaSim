@@ -37,6 +37,8 @@ local ORDER = {
 	{ "UltimateController", Controllers },
 	{ "UltimateBar", UI },
 	{ "TradeController", Controllers },
+	{ "DuelController", Controllers },
+	{ "TempleController", Controllers },
 	{ "MovementController", Controllers },
 	{ "NunchakuController", Controllers },
 	{ "EnemyUIController", Controllers },

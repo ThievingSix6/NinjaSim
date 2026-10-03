@@ -52,6 +52,8 @@ local ORDER = {
 	"PetService",
 	"MutationService",
 	"TradeService",
+	"DuelService",
+	"TempleService",
 	"InventoryService",
 	"EventService",
 	"GiftService",

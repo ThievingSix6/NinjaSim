@@ -24,6 +24,8 @@ Mastery.DamagePerLevel = 0.005 -- +0.5% damage per level of the worn suit (+50% 
 Mastery.KillPoints = 3 -- a same-level kill
 Mastery.BossPoints = 75
 Mastery.TierScale = 0.15 -- ultimates hit +15% harder per suit above Brown
+Mastery.CooldownScale = 0.8 -- 2026-10-03: ultimate cooldowns are 80% of the listed value...
+Mastery.MaxCooldown = 40 -- ...and never more than 40 s
 
 -- Points to go from `level` to the next.
 function Mastery.ToNext(level: number): number
@@ -250,6 +252,7 @@ for index, tier in ipairs(Tiers.List) do
 	local list = {}
 	for slot, base in ipairs(set) do
 		local def = table.clone(base)
+		def.Cooldown = math.min(Mastery.MaxCooldown, math.floor(base.Cooldown * Mastery.CooldownScale * 2 + 0.5) / 2)
 		def.Id = "ult_" .. tier.Id .. "_" .. string.lower(base.Kind)
 		def.Slot = slot
 		def.Level = Mastery.Slots[slot].Level

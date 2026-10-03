@@ -36,7 +36,7 @@ function Menu.Build(ctx)
 	-- ===== lobby: other players =====
 	local lobby = Kit.New("Frame", { BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1), Name = "Lobby", Parent = content })
 	Kit.Label({
-		Text = "Trade pets, hats and charms with players in this server. Both of you press Ready, then the items swap after a 3 second countdown. Any change un-readies both sides.",
+		Text = "Trade pets, hats and charms with players in this server, or challenge them to a duel (a wager duel puts half your levels on the line). Both of you press Ready, then the items swap after a 3 second countdown. Any change un-readies both sides.",
 		Font = Theme.FontBody, TextSize = 15, Color = Theme.SubText, Wrapped = true, Size = UDim2.new(1, 0, 0, 40), Stroke = false, Parent = lobby,
 	})
 	local players = Common.Grid(lobby, { List = true, Gap = 8, Size = UDim2.new(1, 0, 1, -50), Position = UDim2.fromOffset(0, 50) })
@@ -198,11 +198,33 @@ function Menu.Build(ctx)
 			if other ~= Players.LocalPlayer then
 				others += 1
 				local row = Kit.Panel({ Size = UDim2.new(1, -8, 0, 58), Color = Theme.Panel2, StrokeThickness = 3, Radius = 12, LayoutOrder = others, Parent = players })
-				Kit.Label({ Text = other.DisplayName, TextSize = 20, Size = UDim2.new(1, -220, 1, 0), Position = UDim2.fromOffset(16, 0), StrokeThickness = 2, Parent = row })
+				Kit.Label({ Text = other.DisplayName, TextSize = 20, Size = UDim2.new(1, -560, 1, 0), Position = UDim2.fromOffset(16, 0), StrokeThickness = 2, Parent = row })
 				Kit.Button({
 					Text = "Request Trade", Color = "Sky", TextSize = 17, Size = UDim2.fromOffset(180, 42), Position = UDim2.new(1, -10, 0.5, 0), AnchorPoint = Vector2.new(1, 0.5), Parent = row,
 					OnClick = function()
 						DataController:Request("TradeRequest", other.UserId)
+					end,
+				})
+				-- duels (DuelService): a plain one, or one where half your levels are on the line
+				Kit.Button({
+					Text = "Wager Duel", Icon = "Katana", Color = "Red", TextSize = 16, Size = UDim2.fromOffset(170, 42), Position = UDim2.new(1, -200, 0.5, 0), AnchorPoint = Vector2.new(1, 0.5), Parent = row,
+					OnClick = function()
+						Common.Confirm(window, "Wager duel " .. other.DisplayName .. "?", "If you lose, you lose half your levels. If you win, you gain half of theirs. They have to accept.", "Challenge", "Red", function()
+							local ok, message = DataController:Request("DuelRequest", other.UserId, true)
+							if ok then
+								C.NotificationController:Toast(tostring(message or "Challenge sent"), Theme.Gold, "Katana")
+							end
+						end)
+					end,
+				})
+				Kit.Button({
+					Text = "Duel", Icon = "Katana", Color = "Orange", TextSize = 16, Size = UDim2.fromOffset(150, 42), Position = UDim2.new(1, -380, 0.5, 0), AnchorPoint = Vector2.new(1, 0.5), Parent = row,
+					OnClick = function()
+						-- refusals are toasted by DataController
+						local ok, message = DataController:Request("DuelRequest", other.UserId, false)
+						if ok then
+							C.NotificationController:Toast(tostring(message or "Challenge sent"), Theme.Gold, "Katana")
+						end
 					end,
 				})
 			end

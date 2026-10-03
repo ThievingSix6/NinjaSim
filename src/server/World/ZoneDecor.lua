@@ -830,4 +830,94 @@ function ZoneDecor.Void(ctx)
 	end)
 end
 
+-- ---------------------------------------------------------------- cursed temple
+
+-- The ruined temple of the Cursed Temple zone. Its gate (the glowing seal under the
+-- black torii, a ProximityPrompt tagged TempleGate) opens the Temple menu: the way down
+-- into the 100 floors (TempleService).
+local function cursedTemple(ctx, x: number, z: number)
+	local f, rng = ctx.Folder, ctx.Rng
+	local stone, dark, blood = rgb(70, 58, 60), rgb(30, 24, 26), rgb(150, 18, 24)
+	ctx.Claim(x, z, 26)
+	ctx.Claim(x, z - 26, 14)
+	local hall = ctx.At(x, z, 0, 0.5)
+	plinth(f, hall, 40, 28, stone, Enum.Material.Cobblestone, 14)
+	Props.House(f, hall * CFrame.new(0, 0.6, 4), { Width = 30, Depth = 18, Height = 12, Wall = rgb(64, 50, 50), Wood = dark, Roof = rgb(36, 28, 30), RoofHeight = 10, RoofTrim = blood })
+	-- broken pillars along the front steps, some fallen
+	for i = -2, 2 do
+		local cf = hall * CFrame.new(i * 8, 0.6, -12)
+		local h = if i % 2 == 0 then 14 else rng:NextNumber(4, 8)
+		Props.Part(f, Vector3.new(2.6, h, 2.6), cf * CFrame.new(0, h / 2, 0), stone, Enum.Material.Basalt)
+		if h < 10 then
+			Props.Part(f, Vector3.new(2.4, 2.4, 7), cf * CFrame.new(1.5, 1.2, -4) * CFrame.Angles(0, rng:NextNumber(-0.6, 0.6), 0), stone, Enum.Material.Basalt)
+		end
+	end
+	for _, side in ipairs({ -1, 1 }) do
+		Props.Brazier(f, hall * CFrame.new(side * 17, 0.6, -12), rgb(255, 50, 30))
+		Props.Banner(f, hall * CFrame.new(side * 11, 0.6, -6), blood, rgb(20, 10, 10))
+	end
+	-- the gate: a black torii over a glowing seal in the ground
+	local gate = ctx.At(x, z - 26, 0, 0.3)
+	Props.Torii(f, gate, 14, 16, rgb(26, 16, 18))
+	local seal = Props.Part(f, Vector3.new(0.6, 12, 12), gate * CFrame.new(0, 0.35, 0) * CFrame.Angles(0, 0, math.pi / 2), rgb(255, 40, 30), Enum.Material.Neon, Enum.PartType.Cylinder)
+	seal.Transparency = 0.25
+	seal.CanCollide = false
+	Props.Light(seal, rgb(255, 50, 40), 26, 2.5)
+	local veil = Props.Part(f, Vector3.new(12, 13, 0.3), gate * CFrame.new(0, 7, 0), rgb(120, 0, 20), Enum.Material.Neon)
+	veil.Transparency = 0.7
+	veil.CanCollide = false
+	local prompt = Instance.new("ProximityPrompt")
+	prompt.ActionText = "Enter the Depths"
+	prompt.ObjectText = "The Cursed Temple"
+	prompt.HoldDuration = 0.5
+	prompt.MaxActivationDistance = 14
+	prompt.RequiresLineOfSight = false
+	prompt:SetAttribute("TempleGate", true)
+	prompt.Parent = veil
+	Props.Sign(f, gate * CFrame.new(14, 0, 2) * CFrame.Angles(0, math.pi, 0), "The Cursed Temple", "100 floors down. Few return.", rgb(255, 90, 80))
+end
+
+function ZoneDecor.Cursed(ctx)
+	local f, rng = ctx.Folder, ctx.Rng
+	entranceArch(ctx, function(cf)
+		Props.Torii(f, cf, 16, 18, rgb(26, 16, 18))
+	end)
+	local tx, tz = findSpot(ctx, -150, 95, 22, { MaxSlope = 0.5 }, 48)
+	cursedTemple(ctx, tx or -150, tz or 95)
+	ctx.RoadSide(34, 12, function(cf)
+		Props.StoneLantern(f, cf, rgb(255, 50, 40))
+	end)
+	ctx.Scatter(14, 6, function(cf)
+		Props.Statue(f, cf, rgb(60, 50, 52), rgb(255, 40, 30))
+	end, { MaxSlope = 0.3, Sink = 0.5 })
+	ctx.Scatter(18, 4, function(cf)
+		local h = rng:NextNumber(5, 12)
+		Props.Part(f, Vector3.new(2.4, h, 2.4), cf * CFrame.new(0, h / 2 - 0.5, 0) * CFrame.Angles(rng:NextNumber(-0.15, 0.15), 0, rng:NextNumber(-0.15, 0.15)), rgb(66, 56, 58), Enum.Material.Basalt)
+	end, { Edge = 4, MaxSlope = 0.4 })
+	local function blighted(cf)
+		Props.DeadTree(f, cf, rgb(36, 24, 24), rng)
+	end
+	ctx.Groves(9, 5, 20, 4, blighted, { Edge = 8, MaxSlope = 0.8 })
+	ctx.Scatter(20, 4, blighted, { Edge = 10 })
+	ctx.Scatter(10, 4, function(cf)
+		Props.Crystal(f, cf, rgb(220, 30, 40), rng:NextNumber(4, 8), rng)
+	end, { Edge = 4 })
+	ctx.Scatter(40, 3, function(cf)
+		Props.Bush(f, cf, rgb(70, 30, 32), rng)
+	end, { Edge = 6 })
+	ctx.Scatter(50, 1.5, function(cf)
+		Props.GrassTuft(f, cf, rgb(120, 40, 36), rng)
+	end)
+	ctx.Scatter(20, 4, function(cf)
+		Props.Rock(f, cf, rng:NextNumber(4, 8), rgb(40, 28, 30), Enum.Material.Basalt, rng)
+	end, { Edge = 10, Sink = 1 })
+	-- drifting embers
+	ctx.Scatter(14, 2, function(cf)
+		local orb = Props.Part(f, Vector3.new(1, 1, 1), cf * CFrame.new(0, rng:NextNumber(5, 12), 0), rgb(255, 60, 40), Enum.Material.Neon, Enum.PartType.Ball)
+		Props.Foliage(orb)
+		Props.Light(orb, rgb(255, 50, 30), 14, 1.4)
+	end)
+	ctx.Ridge(28, 6, blighted)
+end
+
 return ZoneDecor

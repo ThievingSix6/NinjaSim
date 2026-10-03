@@ -70,7 +70,7 @@ return function(E)
 	end
 	shot("hud")
 	local only = process.env.UISHOTS_ONLY
-	for _, name in ipairs({ "Shop", "Pets", "Inventory", "Armory", "Rebirth", "Upgrades", "Areas", "Gifts", "Trophies", "Codes", "Settings", "Skills", "Suits", "Mutate", "Trade" }) do
+	for _, name in ipairs({ "Shop", "Pets", "Inventory", "Armory", "Rebirth", "Upgrades", "Areas", "Gifts", "Trophies", "Codes", "Settings", "Skills", "Suits", "Mutate", "Trade", "Temple" }) do
 		if not only or string.find(only, name, 1, true) then
 			MM:Open(name)
 			shot(string.lower(name))

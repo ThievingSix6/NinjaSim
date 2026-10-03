@@ -236,6 +236,45 @@ local defs = {
 		Demon = "void", Hat = "Crown", Weapon = "Greatsword", GlowEyes = true, Particles = "Void", Armor = "Full",
 		Attacks = { "Slam", "Shockwave", "Barrage", "Dash", "Summon" }, Minion = "VoidWraith", Drop = "emperors_end",
 	},
+
+	-- ===== The Cursed Temple (Config/Temple; TempleService spawns these on its floors) =====
+	CursedMonk = {
+		Name = "Cursed Monk", Archetype = "Humanoid", Scale = 1.05, Speed = 15,
+		HealthMod = 1.1, DamageMod = 1.1, XPMod = 1.3, CoinMod = 1.3,
+		Colors = { Body = rgb(70, 30, 30), Clothes = rgb(120, 20, 25), Accent = rgb(255, 60, 40), Skin = rgb(150, 140, 130), Eyes = rgb(255, 80, 60) },
+		Hat = "Hood", Weapon = "Staff", GlowEyes = true,
+	},
+	TempleGhoul = {
+		Name = "Temple Ghoul", Archetype = "Beast", Scale = 1.15, Speed = 18,
+		HealthMod = 0.9, DamageMod = 1.2, XPMod = 1.2, CoinMod = 1.1,
+		Colors = { Body = rgb(60, 55, 60), Clothes = rgb(40, 35, 40), Accent = rgb(200, 40, 60), Skin = rgb(90, 85, 90), Eyes = rgb(255, 40, 60) },
+		GlowEyes = true,
+	},
+	HollowSamurai = {
+		Name = "Hollow Samurai", Archetype = "Humanoid", Scale = 1.15, Speed = 14,
+		HealthMod = 1.6, DamageMod = 1.3, XPMod = 1.5, CoinMod = 1.5,
+		Colors = { Body = rgb(30, 28, 34), Clothes = rgb(60, 20, 30), Accent = rgb(200, 30, 50), Skin = rgb(40, 40, 46), Eyes = rgb(255, 60, 80) },
+		Demon = "samurai_black", Hat = "Kabuto", Weapon = "Katana", Armor = "Full", Menpo = true, GlowEyes = true,
+	},
+	CursedOni = {
+		Name = "Cursed Oni", Archetype = "Oni", Scale = 1.5, Speed = 13,
+		HealthMod = 2.4, DamageMod = 1.6, XPMod = 2, CoinMod = 2,
+		Colors = { Body = rgb(110, 20, 40), Clothes = rgb(30, 10, 15), Accent = rgb(255, 120, 40), Skin = rgb(110, 20, 40), Eyes = rgb(255, 220, 80) },
+		Demon = "oni_red", Hat = "Horns", Weapon = "Club", GlowEyes = true, Particles = "BloodFlame",
+	},
+	HexWisp = {
+		Name = "Hex Wisp", Archetype = "Wisp", Scale = 1, Speed = 17,
+		HealthMod = 0.7, DamageMod = 1.4, XPMod = 1.1, CoinMod = 1,
+		Colors = { Body = rgb(255, 80, 40), Clothes = rgb(140, 20, 200), Accent = rgb(170, 60, 255), Skin = rgb(255, 120, 60), Eyes = rgb(255, 255, 255) },
+		Particles = "BloodFlame",
+	},
+	CursedAbbot = {
+		Name = "The Cursed Abbot", Archetype = "Humanoid", Scale = 3, Speed = 15, IsBoss = true,
+		HealthMod = 40, DamageMod = 2.5, XPMod = 18, CoinMod = 26, Shards = 6,
+		Colors = { Body = rgb(40, 10, 14), Clothes = rgb(130, 10, 20), Accent = rgb(255, 60, 30), Skin = rgb(120, 110, 100), Eyes = rgb(255, 70, 40) },
+		Hat = "Halo", Weapon = "Staff", GlowEyes = true, Particles = "BloodFlame",
+		Attacks = { "Slam", "Shockwave", "Barrage", "Dash", "Summon" }, Minion = "CursedMonk",
+	},
 }
 
 Enemies.ById = {}
